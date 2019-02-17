@@ -179,7 +179,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
 - Java API
 
     ```java
-    //创建一个byte[][] 
+    //创建一个byte[][],用来指定预分区的splitKey，即指定region间的rowkey临界值
     splitKeys = {{1,2,3},{4,5,6}}
     admin.createTable(tableDesc,splitKeys)
     ```
@@ -195,7 +195,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
     ```
 这样的话我们就可以得到足够散列的数据，并且MD5取得的是十六进制字符串，那么Key的范围就是（0,0,0）至（f，f，f）
 1. 分多少个：这个需要我们根据我们集群规模来进行安排，假设我们有5个regionServer，每个regionServer有20个region，那么总共就是100个region，最后的工作就是将000-fff分成100份。
-1. 如何分：就是生成一个byte[ ][ ]，用于创建表格，这个我将会些一篇另外的博文来介绍，敬请期待
+1. 如何分：就是生成一个byte[ ][ ]，用于创建表格，参考上面的java代码
 ---
 
 ###HRegionServer宕机如何处理？
