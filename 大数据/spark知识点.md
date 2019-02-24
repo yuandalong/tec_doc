@@ -1,18 +1,18 @@
 ### Spark中Work的主要工作是什么？
-答：主要功能：管理当前节点内存，CPU的使用状况，接收master分配过来的资源指令，通过ExecutorRunner启动程序分配任务，worker就类似于包工头，管理分配新进程，做计算的服务，相当于process服务。  
+主要功能：管理当前节点内存，CPU的使用状况，接收master分配过来的资源指令，通过ExecutorRunner启动程序分配任务，worker就类似于包工头，管理分配新进程，做计算的服务，相当于process服务。  
 需要注意的是：
 1. worker会不会汇报当前信息给master，worker心跳给master主要只有workid，它不会发送资源信息以心跳的方式给mater，master分配的时候就知道work，只有出现故障的时候才会发送资源。
 2. worker不会运行代码，具体运行的是Executor是可以运行具体appliaction写的业务逻辑代码，操作代码的节点，它不会运行程序的代码的。
 ---
 
 ### RDD机制？
-答：rdd分布式弹性数据集，简单的理解成一种数据结构，是spark框架上的通用货币。
+rdd分布式弹性数据集，简单的理解成一种数据结构，是spark框架上的通用货币。
 所有算子都是基于rdd来执行的，不同的场景会有不同的rdd实现类，但是都可以进行互相转换。
 rdd执行过程中会形成dag图，然后形成lineage保证容错性等。 从物理的角度来看rdd存储的是block和node之间的映射。
 
 ---
 ### spark有哪些组件？
-答：主要有如下组件：  
+主要有如下组件：  
 1. master：管理集群和节点，不参与计算。  
 2. salve：物理节点，干活的服务器，可运行1个或多个worker，但官方不建议运行多个
 3. worker：计算节点，进程本身不参与计算，和master汇报。 一个worker中可以有一个或多个executor，一个executor拥有多个cpu core和memory。 
@@ -22,14 +22,17 @@ rdd执行过程中会形成dag图，然后形成lineage保证容错性等。 从
 7. task：一个partition对应一个task。
 ---
 ### spark工作机制？
-答：用户在client端提交作业后，会由Driver运行main方法并创建spark context上下文。  
+1. 用户在client端提交作业
+2. 由Driver运行main方法并创建spark context上下文。
+3. 执行rdd算子，形成dag图输入dag scheduler。
+4. 按照rdd之间的依赖关系划分stage输入task scheduler。
+5. task scheduler会将stage划分为task set分发到各个节点的executor中执行
 
-执行rdd算子，形成dag图输入dagscheduler，按照rdd之间的依赖关系划分stage输入task scheduler。 task scheduler会将stage划分为task set分发到各个节点的executor中执行。
-
+---
 ### spark的优化怎么做？  
-答： spark调优比较复杂，但是大体可以分为三个方面来进行  
+spark调优比较复杂，但是大体可以分为三个方面来进行  
 1. 平台层面的调优：防止不必要的jar包分发，提高数据的本地性，选择高效的存储格式如parquet  
-2. 应用程序层面的调优：过滤操作符的优化降低过多小任务，降低单条记录的资源开销，处理数据倾斜，复用RDD进行缓存，作业并行化执行等等  
+2. 应用程序层面的调优：过滤操作符的优化，降低过多小任务，降低单条记录的资源开销，处理数据倾斜，复用RDD进行缓存，作业并行化执行等等  
 3. JVM层面的调优：设置合适的资源量，设置合理的JVM，启用高效的序列化方法如kyro，增大off head内存等等
 ---
 ### 什么是RDD宽依赖和窄依赖？
@@ -41,7 +44,7 @@ RDD和它依赖的parent RDD(s)的关系有两种不同的类型，即窄依赖�
 
 ### Stage概念
 
-Spark任务会根据**RDD之间的依赖关系，形成一个DAG有向无环图**，DAG会提交给DAGScheduler，DAGScheduler会把DAG划分相互依赖的多个stage，划分stage的依据就是RDD之间的宽窄依赖。**遇到宽依赖就划分stage**,每个stage包含一个或多个task任务。然后将这些task以taskSet的形式提交给**TaskScheduler运行**。     **stage是由一组并行的task组成。**
+Spark任务会根据**RDD之间的依赖关系，形成一个DAG有向无环图**，DAG会提交给DAGScheduler，DAGScheduler会把DAG划分相互依赖的多个stage，划分stage的依据就是RDD之间的宽窄依赖。**遇到宽依赖就划分stage**,每个stage包含一个或多个task任务。然后将这些task以taskSet的形式提交给**TaskScheduler运行**。 **stage是由一组并行的task组成。**
 
 ---
 
@@ -61,12 +64,12 @@ Spark任务会根据**RDD之间的依赖关系，形成一个DAG有向无环图*
 
 备注：图中几个理解点：
 
-1. Spark的pipeLine的计算模式，相当于执行了一个高阶函数f3(f2(f1(textFile))) !+!+!=3 也就是来一条数据然后计算一条数据，把所有的逻辑走完，然后落地，准确的说一个task处理遗传分区的数据 因为跨过了不同的逻辑的分区。而MapReduce是 1+1=2,2+1=3的模式，也就是计算完落地，然后在计算，然后再落地到磁盘或内存，最后数据是落在计算节点上，按reduce的hash分区落地。所以这也是比Mapreduce快的原因，完全基于内存计算。
+1. Spark的pipeLine的计算模式，相当于执行了一个高阶函数`f3(f2(f1(textFile))) !+!+!=3 `也就是来一条数据然后计算一条数据，把所有的逻辑走完，然后落地，准确的说一个task处理遗传分区的数据 因为跨过了不同的逻辑的分区。而MapReduce是 1+1=2,2+1=3的模式，也就是计算完落地，然后在计算，然后再落地到磁盘或内存，最后数据是落在计算节点上，按reduce的hash分区落地。所以这也是比Mapreduce快的原因，完全基于内存计算。
 
 2. 管道中的数据何时落地：**shuffle write的时候，对RDD进行持久化的时候。**
-3. **Stage的task并行度是由stage的最后一个RDD的分区数来决定的 。一般来说，一个partiotion对应一个task,但最后reduce的时候可以手动改变reduce的个数，也就是分区数，即改变了并行度。例如reduceByKey(XXX,3),GroupByKey(4)，union由的分区数由前面的相加。**
-4. **如何提高stage的并行度**：reduceBykey(xxx,numpartiotion),join(xxx,numpartiotion)
-
+3. Stage的task并行度是由**stage的最后一个RDD的分区数**来决定的 。一般来说，一个partiotion对应一个task,但最后reduce的时候可以手动改变reduce的个数，也就是分区数，即改变了并行度。例如reduceByKey(XXX,3),GroupByKey(4)，union由的分区数由前面的相加。
+4. **如何提高stage的并行度**：`reduceBykey(xxx,numpartiotion),join(xxx,numpartiotion)
+`
 ---
 
 ### cache和pesist的区别 
@@ -154,13 +157,13 @@ rdd的写操作是粗粒度的，rdd的读操作既可以是粗粒度的
 ---
 ### spark master HA相关
 1. **Spark master使用zookeeper进行HA的，有哪些元数据保存在Zookeeper？**
-答：spark通过这个参数spark.deploy.zookeeper.dir指定master元数据在zookeeper中保存的位置，包括Worker，Driver和Application以及Executors。standby节点要从zk中，获得元数据信息，恢复集群运行状态，才能对外继续提供服务，作业提交资源申请等，在恢复前是不能接受请求的。另外，Master切换需要注意2点:
+spark通过这个参数spark.deploy.zookeeper.dir指定master元数据在zookeeper中保存的位置，包括Worker，Driver和Application以及Executors。standby节点要从zk中，获得元数据信息，恢复集群运行状态，才能对外继续提供服务，作业提交资源申请等，在恢复前是不能接受请求的。另外，Master切换需要注意2点:
     1.  在Master切换的过程中，所有的已经在运行的程序皆正常运行！因为Spark Application在运行前就已经通过Cluster Manager获得了计算资源，所以在运行时Job本身的调度和处理和Master是没有任何关系的！
     2.  在Master的切换过程中唯一的影响是不能提交新的Job：一方面不能够提交新的应用程序给集群，因为只有Active Master才能接受新的程序的提交请求；另外一方面，已经运行的程序中也不能够因为Action操作触发新的Job的提交请求；
 2. **Spark master HA 主从切换过程不会影响集群已有的作业运行，为什么？**  
-答：因为程序在运行之前，已经申请过资源了，driver和Executors通讯，不需要和master进行通讯的。
+因为程序在运行之前，已经申请过资源了，driver和Executors通讯，不需要和master进行通讯的。
 3. **Spark on Mesos中，什么是的粗粒度分配，什么是细粒度分配，各自的优点和缺点是什么？**  
-答：
+
     1. 粗粒度：启动时就分配好资源， 程序启动，后续具体使用就使用分配好的资源，不需要再分配资源；好处：作业特别多时，资源复用率高，适合粗粒度；不好：容易资源浪费，假如一个job有1000个task，完成了999个，还有一个没完成，那么使用粗粒度，999个资源就会闲置在那里，资源浪费。  
     2. 细粒度分配：用资源的时候分配，用完了就立即回收资源，启动会麻烦一点，启动一次分配一次，会比较麻烦。
 4. **如何配置spark master的HA？**  
