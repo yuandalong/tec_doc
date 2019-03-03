@@ -487,7 +487,7 @@ PreCommit是一个缓冲，保证了在最后提交阶段之前各参与节点�
 
 此方案是由Dan Pritchet总结的，称之为BASE模型。
 
-#### NIO
+### NIO
 NIO主要有三大核心部分：Channel(通道)，Buffer(缓冲区), Selector。传统IO基于字节流和字符流进行操作，而NIO基于Channel和Buffer(缓冲区)进行操作，数据总是从通道读取到缓冲区中，或者从缓冲区写入到通道中。Selector(选择区)用于监听多个通道的事件（比如：连接打开，数据到达）。因此，单个线程可以监听多个数据通道。
 
 NIO和传统IO（一下简称IO）之间第一个最大的区别是，IO是面向流的，NIO是面向缓冲区的。 Java IO面向流意味着每次从流中读一个或多个字节，直至读取所有字节，它们没有被缓存在任何地方。此外，它不能前后移动流中的数据。如果需要前后移动从流中读取的数据，需要先将它缓存到一个缓冲区。NIO的缓冲导向方法略有不同。数据读取到一个它稍后处理的缓冲区，需要时可在缓冲区中前后移动。这就增加了处理过程中的灵活性。但是，还需要检查是否该缓冲区中包含所有您需要处理的数据。而且，需确保当更多的数据读入缓冲区时，不要覆盖缓冲区里尚未处理的数据。
@@ -515,7 +515,7 @@ IO的各种流是阻塞的。这意味着，当一个线程调用read() 或 writ
 
 ![](media/nio2.png)
 
-##### NIO实例
+#### NIO实例
 Selector类可以用于避免使用阻塞式客户端中很浪费资源的“忙等”方法。例如，考虑一个IM服务器。像QQ或者旺旺这样的，可能有几万甚至几千万个客户端同时连接到了服务器，但在任何时刻都只是非常少量的消息。
 
 需要读取和分发。这就需要一种方法阻塞等待，直到至少有一个信道可以进行I/O操作，并指出是哪个信道。NIO的选择器就实现了这样的功能。一个Selector实例可以同时检查一组信道的I/O状态。用专业术语来说，选择器就是一个多路开关选择器，因为一个选择器能够管理多个信道上的I/O操作。然而如果用传统的方式来处理这么多客户端，使用的方法是循环地一个一个地去检查所有的客户端是否有I/O操作，如果当前客户端有I/O操作，则可能把当前客户端扔给一个线程池去处理，如果没有I/O操作则进行下一个轮询，当所有的客户端都轮询过了又接着从头开始轮询；这种方法是非常笨而且也非常浪费资源，因为大部分客户端是没有I/O操作，我们也要去检查；而Selector就不一样了，它在内部可以同时管理多个I/O，当一个信道有I/O操作的时候，他会通知Selector，Selector就是记住这个信道有I/O操作，并且知道是何种I/O操作，是读呢？是写呢？还是接受新的连接；所以如果使用Selector，它返回的结果只有两种结果，一种是0，即在你调用的时刻没有任何客户端需要I/O操作，另一种结果是一组需要I/O操作的客户端，这时你就根本不需要再检查了，因为它返回给你的肯定是你想要的。这样一种通知的方式比那种主动轮询的方式要高效得多！
@@ -617,7 +617,7 @@ public class ServerConnect
 ```
 下面来慢慢讲解这段代码。
 
-###### ServerSocketChannel
+##### ServerSocketChannel
 
 打开ServerSocketChannel：
 
@@ -655,7 +655,7 @@ ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
             }
         }
 ```
-###### Selector
+##### Selector
 
 Selector的创建：
 
@@ -688,7 +688,7 @@ ssc= ServerSocketChannel.open();
 2. SelectionKey.OP_ACCEPT
 3. SelectionKey.OP_READ
 4. SelectionKey.OP_WRITE
-###### SelectionKey
+##### SelectionKey
 
 当向Selector注册Channel时，register()方法会返回一个SelectionKey对象。这个对象包含了一些你感兴趣的属性：
 * interest集合
@@ -729,7 +729,7 @@ Object attachedObj = selectionKey.attachment();
 ```java
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ, theObject);
 ```
-###### 通过Selector选择通道
+##### 通过Selector选择通道
 
 一旦向Selector注册了一或多个通道，就可以调用几个重载的select()方法。这些方法返回你所感兴趣的事件（如连接、接受、读或写）已经准备就绪的那些通道。换句话说，如果你对“读就绪”的通道感兴趣，select()方法会返回读事件已经就绪的那些通道。
 
@@ -757,7 +757,49 @@ SelectionKey.channel()方法返回的通道需要转型成你要处理的类型�
 
 一个完整的使用Selector和ServerSocketChannel的案例可以参考案例的selector()方法。
 
-#### java中的函数式编程
+### java中的函数式编程
 参考码农翻身的两篇文章：
 [一](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513149&idx=1&sn=00e563fbd09c9cf9e2ac4283d43cccf1&scene=21#wechat_redirect)
 [二](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513152&idx=1&sn=1398826ca9f9ea2b7c374574302a3838&scene=21#wechat_redirect)
+
+
+### 编译时常量、运行时常量和静态代码块
+ 常量是程序运行时恒定不变的量，许多程序设计语言都有某种方法，向编译器告知一块数据时恒定不变的，例如C++中的const和Java中的final。
+
+   根据编译器的不同行为，常量又分为编译时常量和运行时常量，其实编译时常量肯定就是运行时常量，只是编译时常量在编译的时候就被计算执行计算，并带入到程序中一切可能用到它的计算式中。
+
+   以Java为例，`static final int a = 1`将是一个编译时常量，编译后的符号表中将找不到a，所有对a的引用都被替换成了1。
+
+而`static final int b = "test".length()`将是一个运行时常量。测试代码如下：
+
+```java
+public class CompilConstant {
+
+ public static void main(String[] args) {
+  System.out.println(Test.a);
+  System.out.println(Test.c);
+ }
+
+}
+
+class Test {
+ static {
+  System.out.println("Class Test Was Loaded !");
+ }
+ public static final int a =10;
+ public static final int c = "test".length();
+}
+```
+
+```
+10
+Class Test Was Loaded !
+0
+```
+
+即:
+1. a被作为编译期全局常量，并不依赖于类，而b作为运行期的全局常量，其值还是依赖于类的。
+
+2. 编译时常量在编译时就可以确定值，上例中的a可以确定值，但是c在编译器是不可能确定值的。
+
+3. 由于编译时常量不依赖于类，所以对编译时常量的访问不会引发类的初始化。同样的原因，静态块的执行在运行时常量之前，在编译时常量之后

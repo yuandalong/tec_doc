@@ -38,40 +38,35 @@
 
 #### 四、常见微服务框架
 
-1、服务治理框架
+1. 服务治理框架
 
-（1）Dubbo（http://dubbo.io/）、Dubbox（当当网对Dubbo的扩展）
+    1. [Dubbo](http://dubbo.apache.org/zh-cn/)、Dubbox（当当网对Dubbo的扩展）
+    ![](media/springcloud2.png)
+    扩展阅读：[Dubbo详细介绍与安装使用过程](http://blog.csdn.net/xlgen157387/article/details/51865289)
+    最近的好消息是Dubbo已近重新开始进行运维啦！
 
-![](media/springcloud2.png)
-
-扩展阅读：Dubbo详细介绍与安装使用过程: http://blog.csdn.net/xlgen157387/article/details/51865289
-
-最近的好消息是Dubbo已近重新开始进行运维啦！
-
-（2）Netflix的Eureka、Apache的Consul等。
-
+    1. Netflix的Eureka、Apache的Consul等。
 Spring Cloud Eureka是对Netflix的Eureka的进一步封装。
 
-2、分布式配置管理
+1. 分布式配置管理
 
-（1）百度的Disconf
+    1. 百度的Disconf
+    ![](media/springcloud3.jpg)
+    
+    1. 360的QConf
+    
+    2. Spring Cloud组件中的Config
+    
+    3. 淘宝的Diamond
 
-![](media/springcloud3.jpg)
+1. 批量任务框架
+    1. Spring Cloud组件中的Task 
+    2. LTS
 
-（2）360的QConf
-
-（3）Spring Cloud组件中的Config
-
-（3）淘宝的Diamond
-
-3、批量任务框架
-
-（1）Spring Cloud组件中的Task 
-（2）LTS
-
-4、服务追踪框架
-
-。。。
+2. 服务追踪框架
+    1. zipkin
+    2. pinpoint
+    3. cat
 
 #### 五、Spring Cloud全家桶组件
 
@@ -94,7 +89,7 @@ Spring Cloud Eureka是对Netflix的Eureka的进一步封装。
 
 （2）Spring Cloud Ribbon
 
-在上Spring Cloud Eureka描述了服务如何进行注册，注册到哪里，服务消费者如何获取服务生产者的服务信息，但是Eureka只是维护了服务生产者、注册中心、服务消费者三者之间的关系，真正的服务消费者调用服务生产者提供的数据是通过Spring Cloud Ribbon来实现的。
+以上Spring Cloud Eureka描述了服务如何进行注册，注册到哪里，服务消费者如何获取服务生产者的服务信息，但是Eureka只是维护了服务生产者、注册中心、服务消费者三者之间的关系，真正的服务消费者调用服务生产者提供的数据是通过Spring Cloud Ribbon来实现的。
 
 在（1）中提到了服务消费者是将服务从注册中心获取服务生产者的服务列表并维护在本地的，这种客户端发现模式的方式是服务消费者选择合适的节点进行访问服务生产者提供的数据，这种选择合适节点的过程就是Spring Cloud Ribbon完成的。
 
@@ -112,7 +107,7 @@ Spring Cloud Feign 是一个声明web服务客户端，这使得编写Web服务�
 
 我们在（1）、（2）、（3）中知道了使用Eureka进行服务的注册和发现，使用Ribbon实现服务的负载均衡调用，还知道了使用Feign可以简化我们的编码。但是，这些还不足以实现一个高可用的微服务架构。
 
-例如：当有一个服务出现了故障，而服务的调用方不知道服务出现故障，若此时调用放的请求不断的增加，最后就会等待出现故障的依赖方 相应形成任务的积压，最终导致自身服务的瘫痪。
+例如：当有一个服务出现了故障，而服务的调用方不知道服务出现故障，若此时调用方的请求不断的增加，最后就会等待出现故障的依赖方 相应形成任务的积压，最终导致自身服务的瘫痪。
 
 Spring Cloud Hystrix正是为了解决这种情况的，防止对某一故障服务持续进行访问。Hystrix的含义是：断路器，断路器本身是一种开关装置，用于我们家庭的电路保护，防止电流的过载，当线路中有电器发生短路的时候，断路器能够及时切换故障的电器，防止发生过载、发热甚至起火等严重后果。
 
@@ -145,9 +140,9 @@ Config Server用于配置属性的存储，存储的位置可以为Git仓库、S
 
 （7）Spring Cloud Bus
 
-在（5）Spring Cloud Config中，我们知道的配置文件可以通过Config Server存储到Git等地方，通过Config Client进行读取，但是我们的配置文件不可能是一直不变的，当我们的配置文件放生变化的时候如何进行更新哪？
+在（5）Spring Cloud Config中，我们知道的配置文件可以通过Config Server存储到Git等地方，通过Config Client进行读取，但是我们的配置文件不可能是一直不变的，当我们的配置文件发生变化的时候如何进行更新哪？
 
-一种最简单的方式重新一下Config Client进行重新获取，但Spring Cloud绝对不会让你这样做的，Spring Cloud Bus正是提供一种操作使得我们在不关闭服务的情况下更新我们的配置。
+一种最简单的方式重启一下Config Client进行重新获取，但Spring Cloud绝对不会让你这样做的，Spring Cloud Bus正是提供一种操作使得我们在不关闭服务的情况下更新我们的配置。
 
 Spring Cloud Bus官方意义：消息总线。
 
@@ -196,7 +191,7 @@ Spring cloud流应用程序启动器是基于Spring Boot的Spring集成应用程
 
 #### 负载平衡的意义什么？
 
-在计算中，负载平衡可以改善跨计算机，计算机集群，网络链接，中央处理单元或磁盘驱动器等多种计算资源的工作负载分布。负载平衡旨在优化资源使用，最大化吞吐量，最小化响应时间并避免任何单一资源的过载。使用多个组件进行负载平衡而不是单个组件可能会通过冗余来提高可靠性和可用性。负载平衡通常涉及专用软件或硬件，例如多层交换机或域名系统服务器进程。
+在计算中，负载平衡可以改善跨计算机，计算机集群，网络链接，中央处理单元或磁盘驱动器等多种计算资源的工作负载分布。负载平衡旨在优化资源使用，**最大化吞吐量，最小化响应时间并避免任何单一资源的过载**。使用多个组件进行负载平衡而不是单个组件可能会通过冗余来提高可靠性和可用性。负载平衡通常涉及专用软件或硬件，例如多层交换机或域名系统服务器进程。
 
 
 
@@ -335,33 +330,25 @@ Spring Cloud Bus提供了跨多个实例刷新配置的功能。因此，在上�
 
         
 
-springboot集成mybatis的过程
-
-        添加mybatis的starter maven依赖
-
+#### springboot集成mybatis的过程
+添加mybatis的starter maven依赖
                 
 ```xml
 <dependency>
-
-                        <groupId>org.mybatis.spring.boot</groupId>
-
-                        <artifactId>mybatis-spring-boot-starter</artifactId>
-
-                        <version>1.2.0</version>
-
-                </dependency>
+    <groupId>org.mybatis.spring.boot</groupId>
+    <artifactId>mybatis-spring-boot-starter</artifactId>
+    <version>1.2.0</version>
+ </dependency>
 ```
 
-        在mybatis的接口中 添加@Mapper注解
+在mybatis的接口中 添加@Mapper注解
 
-        在application.yml配置数据源信息
+在application.yml配置数据源信息
 
         
 
 #### springboot如何添加【修改代码】自动重启功能
-
-        添加开发者工具集=====spring-boot-devtools
-
+添加开发者工具集=====spring-boot-devtools
 
 ```xml
 <dependencies>
@@ -375,63 +362,43 @@ springboot集成mybatis的过程
         
 
 #### 什么是微服务
+以前的模式是 所有的代码在同一个工程中 部署在同一个服务器中 同一个项目的不同模块不同功能互相抢占资源
 
-        以前的模式是 所有的代码在同一个工程中 部署在同一个服务器中 同一个项目的不同模块不同功能互相抢占资源
+微服务 将工程根据不同的业务规则拆分成微服务 微服务部署在不同的机器上 服务之间进行相互调用
 
-        微服务 将工程根据不同的业务规则拆分成微服务 微服务部署在不同的机器上 服务之间进行相互调用
-
-        Java微服务的框架有 dubbo（只能用来做微服务），spring cloud（提供了服务的发现，断路器等）
+Java微服务的框架有 dubbo（只能用来做微服务），spring cloud（提供了服务的发现，断路器等）
 
         
 
 #### springcloud如何实现服务的注册和发现
+服务在发布时 指定对应的服务名（服务名包括了IP地址和端口） 将服务注册到注册中心（eureka或者zookeeper）
 
-        服务在发布时 指定对应的服务名（服务名包括了IP地址和端口） 将服务注册到注册中心（eureka或者zookeeper）
+这一过程是springcloud自动实现 只需要在main方法添加@EnableDisscoveryClient  同一个服务修改端口就可以启动多个实例
 
-        这一过程是springcloud自动实现 只需要在main方法添加@EnableDisscoveryClient  同一个服务修改端口就可以启动多个实例
-
-        调用方法：传递服务名称通过注册中心获取所有的可用实例 通过负载均衡策略调用（ribbon和feign）对应的服务
+调用方法：传递服务名称通过注册中心获取所有的可用实例 通过负载均衡策略调用（ribbon和feign）对应的服务
 
  
 
 #### ribbon和feign区别
+Ribbon添加maven依赖 spring-starter-ribbon 使用@RibbonClient(value="服务名称") 使用RestTemplate调用远程服务对应的方法
 
-        Ribbon添加maven依赖 spring-starter-ribbon 使用@RibbonClient(value="服务名称") 使用RestTemplate调用远程服务对应的方法
+feign添加maven依赖 spring-starter-feign 服务提供方提供对外接口 调用方使用 在接口上使用@FeignClient("指定服务名")
 
-        feign添加maven依赖 spring-starter-feign 服务提供方提供对外接口 调用方使用 在接口上使用@FeignClient("指定服务名")
-
-Ribbon和Feign的区别：
-
-        Ribbon和Feign都是用于调用其他服务的，不过方式不同。
-
-        1.启动类使用的注解不同，Ribbon用的是@RibbonClient，Feign用的是@EnableFeignClients。
-
-        2.服务的指定位置不同，Ribbon是在@RibbonClient注解上声明，Feign则是在定义抽象方法的接口中使用@FeignClient声明。
-
-        3.调用方式不同，Ribbon需要自己构建http请求，模拟http请求然后使用RestTemplate发送给其他服务，步骤相当繁琐。
-
-        Feign则是在Ribbon的基础上进行了一次改进，采用接口的方式，将需要调用的其他服务的方法定义成抽象方法即可，
-
-        不需要自己构建http请求。不过要注意的是抽象方法的注解、方法签名要和提供服务的方法完全一致。
-
-        
+**Ribbon和Feign的区别：**
+Ribbon和Feign都是用于调用其他服务的，不过方式不同。
+1. 启动类使用的注解不同，Ribbon用的是@RibbonClient，Feign用的是@EnableFeignClients。
+2. 服务的指定位置不同，Ribbon是在@RibbonClient注解上声明，Feign则是在定义抽象方法的接口中使用@FeignClient声明。
+3. 调用方式不同，Ribbon需要自己构建http请求，模拟http请求然后使用RestTemplate发送给其他服务，步骤相当繁琐。
+    Feign则是在Ribbon的基础上进行了一次改进，采用接口的方式，将需要调用的其他服务的方法定义成抽象方法即可，不需要自己构建http请求。不过要注意的是抽象方法的注解、方法签名要和提供服务的方法完全一致。
 
 #### springcloud断路器的作用
+当一个服务调用另一个服务由于网络原因或者自身原因出现问题时 调用者就会等待被调用者的响应 当更多的服务请求到这些资源时，导致更多的请求等待 这样就会发生连锁效应（雪崩效应） 断路器就是解决这一问题
 
-        当一个服务调用另一个服务由于网络原因或者自身原因出现问题时 调用者就会等待被调用者的响应 当更多的服务请求到这些资源时
+断路器有三种状态
+* 完全打开状态： 一定时间内 达到一定的次数无法调用 并且多次检测没有恢复的迹象 断路器完全打开，那么下次请求就不会请求到该服务
 
-                导致更多的请求等待 这样就会发生连锁效应（雪崩效应） 断路器就是解决这一问题
+* 半开 短时间内 有恢复迹象 断路器会将部分请求发给该服务 当能正常调用时 断路器关闭
 
-                断路器有完全打开状态
-
-                        一定时间内 达到一定的次数无法调用 并且多次检测没有恢复的迹象 断路器完全打开，那么下次请求就不会请求到该服务
-
-                半开
-
-                        短时间内 有恢复迹象 断路器会将部分请求发给该服务 当能正常调用时 断路器关闭
-
-                关闭
-
-                        当服务一直处于正常状态 能正常调用 断路器关闭
+* 关闭 当服务一直处于正常状态 能正常调用 断路器关闭
 
 ---
