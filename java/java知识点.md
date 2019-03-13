@@ -220,6 +220,486 @@ Spring 框架顺应了POJO的潮流，提供了一个spring 的容器来管理�
 如果一个Bean 需要一些像事务，日志，安全这样的通用的服务，也是只需要声明即可，spring 容器在运行时能够动态的“织入”这些服务，这叫AOP。 
 
 ---
+#### HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化
+##### 1、HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化？
+在JDK1.6，JDK1.7中，HashMap采用位桶+链表实现，即使用链表处理冲突，同一hash值的链表都存储在一个链表里。但是当位于一个桶中的元素较多，即hash值相等的元素较多时，通过key值依次查找的效率较低。**而JDK1.8中，HashMap采用位桶+链表+红黑树实现**，当链表长度超过阈值（8）时，将链表转换为红黑树，这样大大减少了查找时间。
+
+简单说下HashMap的实现原理：
+
+首先有一个每个元素都是链表（可能表述不准确）的数组，当添加一个元素（key-value）时，就首先计算元素key的hash值，以此确定插入数组中的位置，但是可能存在同一hash值的元素已经被放在数组同一位置了，这时就添加到同一hash值的元素的后面，他们在数组的同一位置，但是形成了链表，同一各链表上的Hash值是相同的，所以说数组存放的是链表。而当链表长度太长时，链表就转换为红黑树，这样大大提高了查找的效率。
+
+当链表数组的容量超过初始容量的0.75时，再散列将链表数组扩大2倍，把原链表数组的搬移到新的数组中
+
+即HashMap的原理图是：
+![20160605101246837](media/20160605101246837.png)
+
+
+##### 一，JDK1.8中的涉及到的数据结构
+
+###### 1. 位桶数组
+
+```java
+transient Node<k,v>[] table;//存储（位桶）的数组</k,v>  
+```
+###### 2. 数组元素Node<K,V>实现了Entry接口
+```java
+//Node是单向链表，它实现了Map.Entry接口  
+static class Node<k,v> implements Map.Entry<k,v> {  
+    final int hash;  
+    final K key;  
+    V value;  
+    Node<k,v> next;  
+    //构造函数Hash值 键 值 下一个节点  
+    Node(int hash, K key, V value, Node<k,v> next) {  
+        this.hash = hash;  
+        this.key = key;  
+        this.value = value;  
+        this.next = next;  
+    }  
+   
+    public final K getKey()        { return key; }  
+    public final V getValue()      { return value; }  
+    public final String toString() { return key + = + value; }  
+   
+    public final int hashCode() {  
+        return Objects.hashCode(key) ^ Objects.hashCode(value);  
+    }  
+   
+    public final V setValue(V newValue) {  
+        V oldValue = value;  
+        value = newValue;  
+        return oldValue;  
+    }  
+    //判断两个node是否相等,若key和value都相等，返回true。可以与自身比较为true  
+    public final boolean equals(Object o) {  
+        if (o == this)  
+            return true;  
+        if (o instanceof Map.Entry) {  
+            Map.Entry<!--?,?--> e = (Map.Entry<!--?,?-->)o;  
+            if (Objects.equals(key, e.getKey()) &&  
+                Objects.equals(value, e.getValue()))  
+                return true;  
+        }  
+        return false;  
+    }  
+```
+    
+###### 3. 红黑树
+```java
+//红黑树  
+static final class TreeNode<k,v> extends LinkedHashMap.Entry<k,v> {  
+    TreeNode<k,v> parent;  // 父节点  
+    TreeNode<k,v> left; //左子树  
+    TreeNode<k,v> right;//右子树  
+    TreeNode<k,v> prev;    // needed to unlink next upon deletion  
+    boolean red;    //颜色属性  
+    TreeNode(int hash, K key, V val, Node<k,v> next) {  
+        super(hash, key, val, next);  
+    }  
+   
+    //返回当前节点的根节点  
+    final TreeNode<k,v> root() {  
+        for (TreeNode<k,v> r = this, p;;) {  
+            if ((p = r.parent) == null)  
+                return r;  
+            r = p;  
+        }  
+    }  
+```
+    
+##### 二，源码中的数据域
+
+加载因子（默认0.75）：为什么需要使用加载因子，为什么需要扩容呢？因为如果填充比很大，说明利用的空间很多，如果一直不进行扩容的话，链表就会越来越长，这样查找的效率很低，因为链表的长度很大（当然最新版本使用了红黑树后会改进很多），扩容之后，将原来链表数组的**每一个链表分成奇偶两个子链表**分别挂在新链表数组的散列位置，这样就减少了每个链表的长度，增加查找效率
+
+HashMap本来是以空间换时间，所以填充比没必要太大。但是填充比太小又会导致空间浪费。如果关注内存，填充比可以稍大，如果主要关注查找性能，填充比可以稍小。
+
+```java
+public class HashMap<k,v> extends AbstractMap<k,v> implements Map<k,v>, Cloneable, Serializable {  
+    private static final long serialVersionUID = 362498820763181265L;  
+    static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16  
+    static final int MAXIMUM_CAPACITY = 1 << 30;//最大容量  
+    static final float DEFAULT_LOAD_FACTOR = 0.75f;//填充比  
+    //当add一个元素到某个位桶，其链表长度达到8时将链表转换为红黑树  
+    static final int TREEIFY_THRESHOLD = 8;  
+    static final int UNTREEIFY_THRESHOLD = 6;  
+    static final int MIN_TREEIFY_CAPACITY = 64;  
+    transient Node<k,v>[] table;//存储元素的数组  
+    transient Set<map.entry<k,v>> entrySet;  
+    transient int size;//存放元素的个数  
+    transient int modCount;//被修改的次数fast-fail机制  
+    int threshold;//临界值 当实际大小(容量*填充比)超过临界值时，会进行扩容   
+    final float loadFactor;//填充比（......后面略）  
+```
+    
+##### 三，HashMap的构造函数
+HashMap的构造方法有4种，主要涉及到的参数有，指定初始容量，指定填充比和用来初始化的Map
+
+```java
+//构造函数1  
+public HashMap(int initialCapacity, float loadFactor) {  
+    //指定的初始容量非负  
+    if (initialCapacity < 0)  
+        throw new IllegalArgumentException(Illegal initial capacity:  +  
+                                           initialCapacity);  
+    //如果指定的初始容量大于最大容量,置为最大容量  
+    if (initialCapacity > MAXIMUM_CAPACITY)  
+        initialCapacity = MAXIMUM_CAPACITY;  
+    //填充比为正  
+    if (loadFactor <= 0 || Float.isNaN(loadFactor))  
+        throw new IllegalArgumentException(Illegal load factor:  +  
+                                           loadFactor);  
+    this.loadFactor = loadFactor;  
+    this.threshold = tableSizeFor(initialCapacity);//新的扩容临界值  
+}  
+   
+//构造函数2  
+public HashMap(int initialCapacity) {  
+    this(initialCapacity, DEFAULT_LOAD_FACTOR);  
+}  
+   
+//构造函数3  
+public HashMap() {  
+    this.loadFactor = DEFAULT_LOAD_FACTOR; // all other fields defaulted  
+}  
+   
+//构造函数4用m的元素初始化散列映射  
+public HashMap(Map<!--? extends K, ? extends V--> m) {  
+    this.loadFactor = DEFAULT_LOAD_FACTOR;  
+    putMapEntries(m, false);  
+}  
+```
+
+##### 四，HashMap的存取机制
+###### 1，HashMap如何getValue值，看源码
+
+```java
+public V get(Object key) {  
+        Node<K,V> e;  
+        return (e = getNode(hash(key), key)) == null ? null : e.value;  
+    }  
+      /** 
+     * Implements Map.get and related methods 
+     * 
+     * @param hash hash for key 
+     * @param key the key 
+     * @return the node, or null if none 
+     */  
+    final Node<K,V> getNode(int hash, Object key) {  
+        Node<K,V>[] tab;//Entry对象数组  
+    Node<K,V> first,e; //在tab数组中经过散列的第一个位置  
+    int n;  
+    K k;  
+    /*找到插入的第一个Node，方法是hash值和n-1相与，tab[(n - 1) & hash]*/  
+    //也就是说在一条链上的hash值相同的  
+        if ((tab = table) != null && (n = tab.length) > 0 &&(first = tab[(n - 1) & hash]) != null) {  
+    /*检查第一个Node是不是要找的Node*/  
+            if (first.hash == hash && // always check first node  
+                ((k = first.key) == key || (key != null && key.equals(k))))//判断条件是hash值要相同，key值要相同  
+                return first;  
+      /*检查first后面的node*/  
+            if ((e = first.next) != null) {  
+                if (first instanceof TreeNode)  
+                    return ((TreeNode<K,V>)first).getTreeNode(hash, key);  
+                /*遍历后面的链表，找到key值和hash值都相同的Node*/  
+                do {  
+                    if (e.hash == hash &&  
+                        ((k = e.key) == key || (key != null && key.equals(k))))  
+                        return e;  
+                } while ((e = e.next) != null);  
+            }  
+        }  
+        return null;  
+    }  
+```
+    
+get(key)方法时获取key的hash值，计算hash&(n-1)得到在链表数组中的位置first=tab[hash&(n-1)],先判断first的key是否与参数key相等，不等就遍历后面的链表找到相同的key值返回对应的Value值即可
+###### 2，HashMap如何put(key，value);看源码
+
+```java
+public V put(K key, V value) {  
+        return putVal(hash(key), key, value, false, true);  
+    }  
+     /** 
+     * Implements Map.put and related methods 
+     * 
+     * @param hash hash for key 
+     * @param key the key 
+     * @param value the value to put 
+     * @param onlyIfAbsent if true, don't change existing value 
+     * @param evict if false, the table is in creation mode. 
+     * @return previous value, or null if none 
+     */  
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent,  
+                   boolean evict) {  
+        Node<K,V>[] tab;   
+    Node<K,V> p;   
+    int n, i;  
+        if ((tab = table) == null || (n = tab.length) == 0)  
+            n = (tab = resize()).length;  
+    /*如果table的在（n-1）&hash的值是空，就新建一个节点插入在该位置*/  
+        if ((p = tab[i = (n - 1) & hash]) == null)  
+            tab[i] = newNode(hash, key, value, null);  
+    /*表示有冲突,开始处理冲突*/  
+        else {  
+            Node<K,V> e;   
+        K k;  
+    /*检查第一个Node，p是不是要找的值*/  
+            if (p.hash == hash &&((k = p.key) == key || (key != null && key.equals(k))))  
+                e = p;  
+            else if (p instanceof TreeNode)  
+                e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);  
+            else {  
+                for (int binCount = 0; ; ++binCount) {  
+        /*指针为空就挂在后面*/  
+                    if ((e = p.next) == null) {  
+                        p.next = newNode(hash, key, value, null);  
+               //如果冲突的节点数已经达到8个，看是否需要改变冲突节点的存储结构，　　　　　　　　　　　　　  
+　　　　　　　　　　　　//treeifyBin首先判断当前hashMap的长度，如果不足64，只进行  
+                        //resize，扩容table，如果达到64，那么将冲突的存储结构为红黑树  
+                        if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st  
+                            treeifyBin(tab, hash);  
+                        break;  
+                    }  
+        /*如果有相同的key值就结束遍历*/  
+                    if (e.hash == hash &&((k = e.key) == key || (key != null && key.equals(k))))  
+                        break;  
+                    p = e;  
+                }  
+            }  
+    /*就是链表上有相同的key值*/  
+            if (e != null) { // existing mapping for key，就是key的Value存在  
+                V oldValue = e.value;  
+                if (!onlyIfAbsent || oldValue == null)  
+                    e.value = value;  
+                afterNodeAccess(e);  
+                return oldValue;//返回存在的Value值  
+            }  
+        }  
+        ++modCount;  
+     /*如果当前大小大于门限，门限原本是初始容量*0.75*/  
+        if (++size > threshold)  
+            resize();//扩容两倍  
+        afterNodeInsertion(evict);  
+        return null;  
+    }  
+```
+下面简单说下添加键值对put(key,value)的过程：
+1，判断键值对数组tab[]是否为空或为null，否则以默认大小resize()；
+2，根据键值key计算hash值得到插入的数组索引i，如果tab[i]==null，直接新建节点添加，否则转入3
+3，判断当前数组中处理hash冲突的方式为链表还是红黑树(check第一个节点类型即可),分别处理
+##### 五，HasMap的扩容机制resize();
+
+构造hash表时，如果不指明初始大小，默认大小为16（即Node数组大小16），如果Node[]数组中的元素达到（填充比*Node.length）重新调整HashMap大小 变为原来2倍大小,扩容很耗时
+
+```java
+ /** 
+    * Initializes or doubles table size.  If null, allocates in 
+    * accord with initial capacity target held in field threshold. 
+    * Otherwise, because we are using power-of-two expansion, the 
+    * elements from each bin must either stay at same index, or move 
+    * with a power of two offset in the new table. 
+    * 
+    * @return the table 
+    */  
+   final Node<K,V>[] resize() {  
+       Node<K,V>[] oldTab = table;  
+       int oldCap = (oldTab == null) ? 0 : oldTab.length;  
+       int oldThr = threshold;  
+       int newCap, newThr = 0;  
+      
+/*如果旧表的长度不是空*/  
+       if (oldCap > 0) {  
+           if (oldCap >= MAXIMUM_CAPACITY) {  
+               threshold = Integer.MAX_VALUE;  
+               return oldTab;  
+           }  
+/*把新表的长度设置为旧表长度的两倍，newCap=2*oldCap*/  
+           else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&  
+                    oldCap >= DEFAULT_INITIAL_CAPACITY)  
+      /*把新表的门限设置为旧表门限的两倍，newThr=oldThr*2*/  
+               newThr = oldThr << 1; // double threshold  
+       }  
+    /*如果旧表的长度的是0，就是说第一次初始化表*/  
+       else if (oldThr > 0) // initial capacity was placed in threshold  
+           newCap = oldThr;  
+       else {               // zero initial threshold signifies using defaults  
+           newCap = DEFAULT_INITIAL_CAPACITY;  
+           newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);  
+       }  
+      
+      
+      
+       if (newThr == 0) {  
+           float ft = (float)newCap * loadFactor;//新表长度乘以加载因子  
+           newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?  
+                     (int)ft : Integer.MAX_VALUE);  
+       }  
+       threshold = newThr;  
+       @SuppressWarnings({"rawtypes","unchecked"})  
+/*下面开始构造新表，初始化表中的数据*/  
+       Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];  
+       table = newTab;//把新表赋值给table  
+       if (oldTab != null) {//原表不是空要把原表中数据移动到新表中      
+           /*遍历原来的旧表*/        
+           for (int j = 0; j < oldCap; ++j) {  
+               Node<K,V> e;  
+               if ((e = oldTab[j]) != null) {  
+                   oldTab[j] = null;  
+                   if (e.next == null)//说明这个node没有链表直接放在新表的e.hash & (newCap - 1)位置  
+                       newTab[e.hash & (newCap - 1)] = e;  
+                   else if (e instanceof TreeNode)  
+                       ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);  
+/*如果e后边有链表,到这里表示e后面带着个单链表，需要遍历单链表，将每个结点重*/  
+                   else { // preserve order保证顺序  
+                ////新计算在新表的位置，并进行搬运  
+                       Node<K,V> loHead = null, loTail = null;  
+                       Node<K,V> hiHead = null, hiTail = null;  
+                       Node<K,V> next;  
+                      
+                       do {  
+                           next = e.next;//记录下一个结点  
+          //新表是旧表的两倍容量，实例上就把单链表拆分为两队，  
+　　　　　　　　　　　　　//e.hash&oldCap为偶数一队，e.hash&oldCap为奇数一对  
+                           if ((e.hash & oldCap) == 0) {  
+                               if (loTail == null)  
+                                   loHead = e;  
+                               else  
+                                   loTail.next = e;  
+                               loTail = e;  
+                           }  
+                           else {  
+                               if (hiTail == null)  
+                                   hiHead = e;  
+                               else  
+                                   hiTail.next = e;  
+                               hiTail = e;  
+                           }  
+                       } while ((e = next) != null);  
+                      
+                       if (loTail != null) {//lo队不为null，放在新表原位置  
+                           loTail.next = null;  
+                           newTab[j] = loHead;  
+                       }  
+                       if (hiTail != null) {//hi队不为null，放在新表j+oldCap位置  
+                           hiTail.next = null;  
+                           newTab[j + oldCap] = hiHead;  
+                       }  
+                   }  
+               }  
+           }  
+       }  
+       return newTab;  
+   }  
+```
+##### 六，JDK1.8使用红黑树的改进
+在java jdk8中对HashMap的源码进行了优化，在jdk7中，HashMap处理“碰撞”的时候，都是采用链表来存储，当碰撞的结点很多时，查询时间是O（n）。
+在jdk8中，HashMap处理“碰撞”增加了红黑树这种数据结构，当碰撞结点较少时，采用链表存储，当较大时（>8个），采用红黑树（特点是查询时间是O（logn））存储（有一个阀值控制，大于阀值(8个)，将链表存储转换成红黑树存储）
+
+![20160605110353076](media/20160605110353076.png)
+
+
+问题分析：
+
+你可能还知道哈希碰撞会对hashMap的性能带来灾难性的影响。如果多个hashCode()的值落到同一个桶内的时候，这些值是存储到一个链表中的。最坏的情况下，所有的key都映射到同一个桶中，这样hashmap就退化成了一个链表——查找时间从O(1)到O(n)。
+
+随着HashMap的大小的增长，get()方法的开销也越来越大。由于所有的记录都在同一个桶里的超长链表内，平均查询一条记录就需要遍历一半的列表。
+
+JDK1.8HashMap的红黑树是这样解决的：
+
+如果某个桶中的记录过大的话（当前是TREEIFY_THRESHOLD = 8），HashMap会动态的使用一个专门的treemap实现来替换掉它。这样做的结果会更好，是O(logn)，而不是糟糕的O(n)。
+
+它是如何工作的？前面产生冲突的那些KEY对应的记录只是简单的追加到一个链表后面，这些记录只能通过遍历来进行查找。但是超过这个阈值后HashMap开始将列表升级成一个二叉树，使用哈希值作为树的分支变量，如果两个哈希值不等，但指向同一个桶的话，较大的那个会插入到右子树里。如果哈希值相等，HashMap希望key值最好是实现了Comparable接口的，这样它可以按照顺序来进行插入。这对HashMap的key来说并不是必须的，不过如果实现了当然最好。如果没有实现这个接口，在出现严重的哈希碰撞的时候，你就并别指望能获得性能提升了。
+
+##### 为什么容量的2的倍数？
+注意put方法里的这部分代码
+```java
+int n, i;  
+        if ((tab = table) == null || (n = tab.length) == 0)  
+            n = (tab = resize()).length;  
+    /*如果table的在（n-1）&hash的值是空，就新建一个节点插入在该位置*/  
+        if ((p = tab[i = (n - 1) & hash]) == null)  
+            tab[i] = newNode(hash, key, value, null);  
+```
+tab[i]是新的数组元素的值，而i是通过(n - 1) & hash来计算的，而n的值是tab.length，也就是数组的长度，现在假设分别使用奇数和偶数来做数组长度，当是奇数的时候，n-1是偶数，求与运算是二进制数每位求与的结果，如果是偶数，则后面全是0，此时求与，0和0或者1的与值都是0，而如果是奇数与hash值来求与，则hash值后面几位的原值会保留下来，而不会全变成0，这样就会大大减少索引i相等的机会，也就是减少了把不同的key分到同一个数组索引上的机会
+ 
+---
+
+#### HashMap、Hashtable、ConcurrentHashMap的原理与区别
+##### HashTable
+
+底层数组+链表实现，无论key还是value都不能为null，线程安全，实现线程安全的方式是在修改数据时锁住整个HashTable，效率低，ConcurrentHashMap做了相关优化
+初始size为11，扩容：newsize = olesize*2+1
+计算index的方法：index = (hash & 0x7FFFFFFF) % tab.length
+##### HashMap
+
+底层数组+链表实现，可以存储null键和null值，线程不安全
+初始size为16，扩容：newsize = oldsize*2，size一定为2的n次幂
+扩容针对整个Map，每次扩容时，原来数组中的元素依次重新计算存放位置，并重新插入
+插入元素后才判断该不该扩容，有可能无效扩容（插入后如果扩容，如果没有再次插入，就会产生无效扩容）
+当Map中元素总数超过Entry数组的75%，触发扩容操作，为了减少链表长度，元素分配更均匀
+计算index方法：index = hash & (tab.length – 1)
+ 
+
+HashMap的初始值还要考虑加载因子:
+
+ 哈希冲突：若干Key的哈希值按数组大小取模后，如果落在同一个数组下标上，将组成一条Entry链，对Key的查找需要遍历Entry链上的每个元素执行equals()比较。
+加载因子：为了降低哈希冲突的概率，默认当HashMap中的键值对达到数组大小的75%时，即会触发扩容。因此，如果预估容量是100，即需要设定100/0.75＝134的数组大小。
+空间换时间：如果希望加快Key查找的时间，还可以进一步降低加载因子，加大初始大小，以降低哈希冲突的概率。
+HashMap和Hashtable都是用hash算法来决定其元素的存储，因此HashMap和Hashtable的hash表包含如下属性：
+
+容量（capacity）：hash表中桶的数量
+初始化容量（initial capacity）：创建hash表时桶的数量，HashMap允许在构造器中指定初始化容量
+尺寸（size）：当前hash表中记录的数量
+负载因子（load factor）：负载因子等于“size/capacity”。负载因子为0，表示空的hash表，0.5表示半满的散列表，依此类推。轻负载的散列表具有冲突少、适宜插入与查询的特点（但是使用Iterator迭代元素时比较慢）
+除此之外，hash表里还有一个“负载极限”，“负载极限”是一个0～1的数值，“负载极限”决定了hash表的最大填满程度。当hash表中的负载因子达到指定的“负载极限”时，hash表会自动成倍地增加容量（桶的数量），并将原有的对象重新分配，放入新的桶内，这称为rehashing。
+
+HashMap和Hashtable的构造器允许指定一个负载极限，HashMap和Hashtable默认的“负载极限”为0.75，这表明当该hash表的3/4已经被填满时，hash表会发生rehashing。
+
+“负载极限”的默认值（0.75）是时间和空间成本上的一种折中：
+
+较高的“负载极限”可以降低hash表所占用的内存空间，但会增加查询数据的时间开销，而查询是最频繁的操作（HashMap的get()与put()方法都要用到查询）
+较低的“负载极限”会提高查询数据的性能，但会增加hash表所占用的内存开销
+程序猿可以根据实际情况来调整“负载极限”值。
+
+##### ConcurrentHashMap
+
+底层采用**分段**的数组+链表实现，线程安全
+通过把整个Map分为N个Segment，可以提供相同的线程安全，但是效率提升N倍，默认提升16倍。(读操作不加锁，由于HashEntry的value变量是 **volatile**的，也能保证读取到最新的值。)
+Hashtable的synchronized是针对整张Hash表的，即每次锁住整张表让线程独占，ConcurrentHashMap允许多个修改操作并发进行，其关键在于使用了锁分离技术
+有些方法需要跨段，比如size()和containsValue()，它们可能需要锁定整个表而而不仅仅是某个段，这需要按顺序锁定所有段，操作完毕后，又按顺序释放所有段的锁
+扩容：段内扩容（段内元素超过该段对应Entry数组长度的75%触发扩容，不会对整个Map进行扩容），插入前检测需不需要扩容，有效避免无效扩容
+ 
+
+##### 总结
+Hashtable和HashMap都实现了Map接口，但是Hashtable的实现是基于Dictionary抽象类的。Java5提供了ConcurrentHashMap，它是HashTable的替代，比HashTable的扩展性更好。
+
+HashMap基于哈希思想，实现对数据的读写。当我们将键值对传递给put()方法时，它调用键对象的hashCode()方法来计算hashcode，然后找到bucket位置来存储值对象。当获取对象时，通过键对象的equals()方法找到正确的键值对，然后返回值对象。HashMap使用链表来解决碰撞问题，当发生碰撞时，对象将会储存在链表的下一个节点中。HashMap在每个链表节点中储存键值对对象。当两个不同的键对象的hashcode相同时，它们会储存在同一个bucket位置的链表中，可通过键对象的equals()方法来找到键值对。如果链表大小超过阈值（TREEIFY_THRESHOLD,8），链表就会被改造为树形结构。
+
+在HashMap中，null可以作为键，这样的键只有一个，但可以有一个或多个键所对应的值为null。当get()方法返回null值时，即可以表示HashMap中没有该key，也可以表示该key所对应的value为null。因此，在HashMap中不能由get()方法来判断HashMap中是否存在某个key，应该用containsKey()方法来判断。而在Hashtable中，无论是key还是value都不能为null。
+
+Hashtable是线程安全的，它的方法是同步的，可以直接用在多线程环境中。而HashMap则不是线程安全的，在多线程环境中，需要手动实现同步机制。
+
+Hashtable与HashMap另一个区别是HashMap的迭代器（Iterator）是fail-fast迭代器，而Hashtable的enumerator迭代器不是fail-fast的。所以当有其它线程改变了HashMap的结构（增加或者移除元素），将会抛出ConcurrentModificationException，但迭代器本身的remove()方法移除元素则不会抛出ConcurrentModificationException异常。但这并不是一个一定发生的行为，要看JVM。
+
+先看一下简单的类图：
+
+![1a20c1a7-c422-374b-9acf-8c33479586cb](media/1a20c1a7-c422-374b-9acf-8c33479586cb.jpg)
+
+
+  
+
+从类图中可以看出来在存储结构中ConcurrentHashMap比HashMap多出了一个类Segment，而Segment是一个可重入锁。
+
+ConcurrentHashMap是使用了锁分段技术来保证线程安全的。
+
+锁分段技术：首先将数据分成一段一段的存储，然后给每一段数据配一把锁，当一个线程占用锁访问其中一个段数据的时候，其他段的数据也能被其他线程访问。 
+
+ConcurrentHashMap提供了与Hashtable和SynchronizedMap不同的锁机制。Hashtable中采用的锁机制是一次锁住整个hash表，从而在同一时刻只能由一个线程对其进行操作；而ConcurrentHashMap中则是一次锁住一个桶。
+
+ConcurrentHashMap默认将hash表分为16个桶，诸如get、put、remove等常用操作只锁住当前需要用到的桶。这样，原来只能一个线程进入，现在却能同时有16个写线程执行，并发性能的提升是显而易见的。
+
+---
+
 ### 泛型
 #### 泛型的由来
 泛型是JDK5引入的，在之前的版本中没有泛型的概念，如集合类的定义可以这样：
