@@ -700,6 +700,96 @@ ConcurrentHashMap默认将hash表分为16个桶，诸如get、put、remove等常
 
 ---
 
+#### 引用传递和值传递的区别
+首先对传值和传引用要有个基本的概念
+
+传值：传递的是值的副本。方法中对副本的修改，不会影响到调用方。
+传引用：传递的是引用的副本，共用一个内存，会影响到调用方。此时，形参和实参指向同一个内存地址。对引用副本本身（对象地址）的修改，如设置为null，重新指向其他对象，不会影响到调用方。
+直接上代码，更好的理解两者的区别。首先看传基本数据类型，如int、long等。
+
+```java
+// 基本数据类型
+public class ParamChangeValue {    
+    public static void main(String[] args) {        
+        int s = 1;        
+        System.out.println("args = [" + s + "]");        
+        change(s);        
+        System.out.println("args = [" + s + "]");  
+    }    
+    private static void change(int i){ 
+        i = i* 5;    
+    }
+}
+```
+
+输出：
+> args = [1]
+args = [1]
+
+从输出的的结果中可以看到原本的s并没有被修改，即传值传递的是值的副本，不会影响到本身。
+
+再来看传对象。
+```java
+// 对象
+public class ObjectChangeValue {    
+    public static class Score{        
+        private int value; 
+        
+        public int getValue()  {            
+            return value;  
+        }  
+        
+        public void setValue(int value) {
+            this.value = value;     
+        }    
+    } 
+    
+    public static void main(String[] args) {       
+        Score score = new Score();        
+        score.setValue(1);        
+        System.out.println("args = [" + score.getValue() + "]");                       
+        change(score);        
+        System.out.println("after args = [" + score.getValue() + "]");   
+    }    
+   
+    private static void change(Score score){  
+        score.setValue(2);    
+    }
+}
+```
+输出：
+> args = [1]
+after args = [2]
+
+从结果中我们可以看到score实例的value值被修改了，因为传引用后指向的是同一个地址，修改的实际上也就是这个地址上的值，另外要注意一点的是如果对象被重新创建或赋值为null，即new会重新指向其他对象，不影响其原对象的值。
+
+第三部分：传String、Integer等immutable类型。
+```java
+// String、Integer、Long等
+public class StringChangeValue {    
+    public static void main(String[] args) {        
+        String s = "test1";        
+        System.out.println("args = [" + s + "]");        
+        change(s);                
+        System.out.println("args = [" + s + "]");    
+    } 
+    
+    private static void change(String i){       
+        i = i + " test value";    
+    }
+}
+```
+输出：
+>args = [test1]
+args = [test1]
+
+只要知道String、Integer类是final类型的就明白输出的结果为什么是这样的。
+
+##### 总结
+基本类型（byte,short,int,long,double,float,char,boolean）为传值；对象类型（Object，数组，容器）为传引用；String、Integer、Double等immutable类型因为类的变量设为**final**属性，无法被修改，只能重新赋值或生成对象。当Integer作为方法参数传递时，**对其赋值会导致原有的引用被指向了方法内的栈地址，失去原有的的地址指向**，所以对赋值后的Integer做任何操作都不会影响原有值。
+
+---
+
 ### 泛型
 #### 泛型的由来
 泛型是JDK5引入的，在之前的版本中没有泛型的概念，如集合类的定义可以这样：
@@ -967,6 +1057,7 @@ PreCommit是一个缓冲，保证了在最后提交阶段之前各参与节点�
 
 此方案是由Dan Pritchet总结的，称之为BASE模型。
 
+---
 ### NIO
 NIO主要有三大核心部分：Channel(通道)，Buffer(缓冲区), Selector。传统IO基于字节流和字符流进行操作，而NIO基于Channel和Buffer(缓冲区)进行操作，数据总是从通道读取到缓冲区中，或者从缓冲区写入到通道中。Selector(选择区)用于监听多个通道的事件（比如：连接打开，数据到达）。因此，单个线程可以监听多个数据通道。
 
@@ -1168,6 +1259,7 @@ ssc= ServerSocketChannel.open();
 2. SelectionKey.OP_ACCEPT
 3. SelectionKey.OP_READ
 4. SelectionKey.OP_WRITE
+
 ##### SelectionKey
 
 当向Selector注册Channel时，register()方法会返回一个SelectionKey对象。这个对象包含了一些你感兴趣的属性：
@@ -1209,6 +1301,7 @@ Object attachedObj = selectionKey.attachment();
 ```java
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ, theObject);
 ```
+
 ##### 通过Selector选择通道
 
 一旦向Selector注册了一或多个通道，就可以调用几个重载的select()方法。这些方法返回你所感兴趣的事件（如连接、接受、读或写）已经准备就绪的那些通道。换句话说，如果你对“读就绪”的通道感兴趣，select()方法会返回读事件已经就绪的那些通道。
@@ -1237,12 +1330,15 @@ SelectionKey.channel()方法返回的通道需要转型成你要处理的类型�
 
 一个完整的使用Selector和ServerSocketChannel的案例可以参考案例的selector()方法。
 
+---
 ### java中的函数式编程
 参考码农翻身的两篇文章：
+
 [一](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513149&idx=1&sn=00e563fbd09c9cf9e2ac4283d43cccf1&scene=21#wechat_redirect)
+
 [二](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513152&idx=1&sn=1398826ca9f9ea2b7c374574302a3838&scene=21#wechat_redirect)
 
-
+---
 ### 编译时常量、运行时常量和静态代码块
  常量是程序运行时恒定不变的量，许多程序设计语言都有某种方法，向编译器告知一块数据时恒定不变的，例如C++中的const和Java中的final。
 
@@ -1283,3 +1379,185 @@ Class Test Was Loaded !
 2. 编译时常量在编译时就可以确定值，上例中的a可以确定值，但是c在编译器是不可能确定值的。
 
 3. 由于编译时常量不依赖于类，所以对编译时常量的访问不会引发类的初始化。同样的原因，静态块的执行在运行时常量之前，在编译时常量之后
+
+---
+### Java中创建对象的5种方式
+Java中有5种创建对象的方式，下面给出它们的例子还有它们的字节码
+
+|方法|说明|
+| --- | --- |
+|使用new关键字	|} → 调用了构造函数|
+|使用Class类的newInstance方法	|} → 调用了构造函数
+|使用Constructor类的newInstance方法	|} → 调用了构造函数|
+|使用clone方法	|} → 没有调用构造函数|
+|使用反序列化	|} → 没有调用构造函数|
+如果你运行了末尾的的程序，你会发现方法1,2,3用构造函数创建对象，方法4,5没有调用构造函数。
+
+#### 1.使用new关键字
+这是最常见也是最简单的创建对象的方式了。通过这种方式，我们可以调用任意的构造函数(无参的和带参数的)。
+
+```java
+Employee emp1 = new Employee();
+0: new           #19          // class org/programming/mitra/exercises/Employee
+3: dup
+4: invokespecial #21          // Method org/programming/mitra/exercises/Employee."":()V
+```
+
+#### 2.使用Class类的newInstance方法
+我们也可以使用Class类的newInstance方法创建对象。这个newInstance方法调用无参的构造函数创建对象。
+
+我们可以通过下面方式调用newInstance方法创建对象:
+
+```java
+Employee emp2 = (Employee) Class.forName("org.programming.mitra.exercises.Employee").newInstance();
+```
+
+或者
+```java
+Employee emp2 = Employee.class.newInstance();
+51: invokevirtual    #70    // Method java/lang/Class.newInstance:()Ljava/lang/Object;
+```
+
+#### 3.使用Constructor类的newInstance方法
+和Class类的newInstance方法很像， java.lang.reflect.Constructor类里也有一个newInstance方法可以创建对象。我们可以通过这个newInstance方法调用有参数的和私有的构造函数。
+
+```java
+Constructor<Employee> constructor = Employee.class.getConstructor();
+Employee emp3 = constructor.newInstance();
+111: invokevirtual  #80  // Method java/lang/reflect/Constructor.newInstance:([Ljava/lang/Object;)Ljava/lang/Object;
+```
+
+这两种newInstance方法就是大家所说的反射。事实上Class的newInstance方法内部调用Constructor的newInstance方法。这也是众多框架，如Spring、Hibernate、Struts等使用后者的原因。想了解这两个newInstance方法的区别，请看这篇[Creating objects through Reflection in Java with Example.](https://programmingmitra.blogspot.in/2016/05/creating-objects-through-reflection-in-java-with-example.html)
+
+#### 4.使用clone方法
+无论何时我们调用一个对象的clone方法，jvm就会创建一个新的对象，将前面对象的内容全部拷贝进去。用clone方法创建对象并不会调用任何构造函数。
+
+要使用clone方法，我们需要先实现Cloneable接口并实现其定义的clone方法。
+
+```java
+Employee emp4 = (Employee) emp3.clone();
+162: invokevirtual #87  // Method org/programming/mitra/exercises/Employee.clone ()Ljava/lang/Object;
+```
+
+#### 5.使用反序列化
+当我们序列化和反序列化一个对象，jvm会给我们创建一个单独的对象。在反序列化时，jvm创建对象并不会调用任何构造函数。
+为了反序列化一个对象，我们需要让我们的类实现Serializable接口
+
+```java
+ObjectInputStream in = new ObjectInputStream(new FileInputStream("data.obj"));
+Employee emp5 = (Employee) in.readObject();
+261: invokevirtual  #118   // Method java/io/ObjectInputStream.readObject:()Ljava/lang/Object;
+```
+
+我们从上面的字节码片段可以看到，除了第1个方法，其他4个方法全都转变为invokevirtual(创建对象的直接方法)，第一个方法转变为两个调用，new和invokespecial(构造函数调用)。
+
+#### 例子
+让我们看一看为下面这个Employee类创建对象：
+
+```java
+class Employee implements Cloneable, Serializable {
+    private static final long serialVersionUID = 1L;
+    private String name;
+    public Employee() {
+        System.out.println("Employee Constructor Called...");
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Employee other = (Employee) obj;
+        if (name == null) {
+            if (other.name != null)
+                return false;
+        } else if (!name.equals(other.name))
+            return false;
+        return true;
+    }
+    @Override
+    public String toString() {
+        return "Employee [name=" + name + "]";
+    }
+    @Override
+    public Object clone() {
+        Object obj = null;
+        try {
+            obj = super.clone();
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+        return obj;
+    }
+}
+```
+
+下面的Java程序中，我们将用5种方式创建Employee对象。你可以从GitHub找到这些代码。
+
+```java
+public class ObjectCreation {
+    public static void main(String... args) throws Exception {
+        // By using new keyword
+        Employee emp1 = new Employee();
+        emp1.setName("Naresh");
+        System.out.println(emp1 + ", hashcode : " + emp1.hashCode());
+        // By using Class class's newInstance() method
+        Employee emp2 = (Employee) Class.forName("org.programming.mitra.exercises.Employee")
+                               .newInstance();
+        // Or we can simply do this
+        // Employee emp2 = Employee.class.newInstance();
+        emp2.setName("Rishi");
+        System.out.println(emp2 + ", hashcode : " + emp2.hashCode());
+        // By using Constructor class's newInstance() method
+        Constructor<Employee> constructor = Employee.class.getConstructor();
+        Employee emp3 = constructor.newInstance();
+        emp3.setName("Yogesh");
+        System.out.println(emp3 + ", hashcode : " + emp3.hashCode());
+        // By using clone() method
+        Employee emp4 = (Employee) emp3.clone();
+        emp4.setName("Atul");
+        System.out.println(emp4 + ", hashcode : " + emp4.hashCode());
+        // By using Deserialization
+        // Serialization
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("data.obj"));
+        out.writeObject(emp4);
+        out.close();
+        //Deserialization
+        ObjectInputStream in = new ObjectInputStream(new FileInputStream("data.obj"));
+        Employee emp5 = (Employee) in.readObject();
+        in.close();
+        emp5.setName("Akash");
+        System.out.println(emp5 + ", hashcode : " + emp5.hashCode());
+    }
+}
+```
+
+程序会输出：
+
+```java
+Employee Constructor Called...
+Employee [name=Naresh], hashcode : -1968815046
+Employee Constructor Called...
+Employee [name=Rishi], hashcode : 78970652
+Employee Constructor Called...
+Employee [name=Yogesh], hashcode : -1641292792
+Employee [name=Atul], hashcode : 2051657
+Employee [name=Akash], hashcode : 63313419
+```
+
+---
