@@ -540,6 +540,102 @@ Oracle JDK8的HotSpot VM去掉“持久代”，以“元数据区”（Metaspac
 
 6. 当对象在 Survivor 区躲过一次 GC 后，其年龄就会+1。默认情况下年龄到达 **15** 的对象会被移到老生代中。
 
+#### 分区收集算法
+
+分区收集算法的代表是G1收集器，该收集器在2012年才在jdk1.7u4中可用，分区算法将整个堆空间划分为连续的不同小区间, 每个小区间独立使用, 独立回收. 这样做的好处是可以控制一次回收多少个小区间, 根据目标停顿时间, 每次合理地回收若干个小区间(而不是整个堆), 从而**减少一次 GC 所产生的停顿**。
+JDK9已使用G1垃圾回收器作为默认的垃圾回收器，以替代CMS
+
+### 垃圾收集器
+
+#### Serial 垃圾收集器（单线程、复制算法）
+
+Serial（英文连续）是最基本垃圾收集器，使用复制算法，曾经是 JDK1.3.1 之前新生代唯一的垃圾收集器。Serial 是一个单线程的收集器，它不但只会使用一个 CPU 或一条线程去完成垃圾收集工作，并且在进行垃圾收集的同时，必须暂停其他所有的工作线程，直到垃圾收集结束。
+
+Serial 垃圾收集器虽然在收集垃圾过程中需要暂停所有其他的工作线程，但是它简单高效，对于限定单个 CPU 环境来说，没有线程交互的开销，可以获得最高的单线程垃圾收集效率，因此 Serial垃圾收集器依然是 java 虚拟机运行在 Client 模式下默认的新生代垃圾收集器。
+
+#### ParNew 垃圾收集器（Serial+多线程）
+
+ParNew 垃圾收集器其实是 Serial 收集器的多线程版本，也使用复制算法，除了使用多线程进行垃圾收集之外，其余的行为和 Serial 收集器完全一样，ParNew 垃圾收集器在垃圾收集过程中同样也要暂停所有其他的工作线程。
+
+ParNew 收集器默认开启和 CPU 数目相同的线程数，可以通过-XX:ParallelGCThreads 参数来限制垃圾收集器的线程数。【Parallel：平行的】
+
+ParNew 虽然是除了多线程外和 Serial 收集器几乎完全一样，但是 ParNew 垃圾收集器是很多 java虚拟机运行在 Server 模式下新生代的默认垃圾收集器。
+
+#### Parallel Scavenge 收集器（多线程复制算法、高效）
+
+Parallel Scavenge 收集器也是一个新生代垃圾收集器，同样使用复制算法，也是一个多线程的垃圾收集器，它重点关注的是程序达到一个可控制的吞吐量（Thoughput，CPU 用于运行用户代码的时间/CPU 总消耗时间，即吞吐量=运行用户代码时间/(运行用户代码时间+垃圾收集时间)），高吞吐量可以最高效率地利用 CPU 时间，尽快地完成程序的运算任务，主要适用于在后台运算而不需要太多交互的任务。自适应调节策略也是 ParallelScavenge 收集器与 ParNew 收集器的一个重要区别。
+
+#### Serial Old 收集器（单线程标记整理算法 ）
+
+Serial Old 是 Serial 垃圾收集器年老代版本，它同样是个单线程的收集器，使用标记-整理算法，这个收集器也主要是运行在 Client 默认的 java 虚拟机默认的年老代垃圾收集器。
+
+在 Server 模式下，主要有两个用途：
+
+1. 在 JDK1.5 之前版本中与新生代的 Parallel Scavenge 收集器搭配使用。
+
+2. 作为年老代中使用 CMS 收集器的后备垃圾收集方案。
+
+新生代 Serial 与年老代 Serial Old 搭配垃圾收集过程图：
+
+![](media/15528259080101.jpg)
+
+新生代 Parallel Scavenge 收集器与 ParNew 收集器工作原理类似，都是多线程的收集器，都使用的是复制算法，在垃圾收集过程中都需要暂停所有的工作线程。新生代 Parallel
+
+Scavenge/ParNew 与年老代 Serial Old 搭配垃圾收集过程图：
+
+![](media/15528259309395.jpg)
+
+#### Parallel Old 收集器（多线程标记整理算法）
+
+Parallel Old 收集器是 Parallel Scavenge 的年老代版本，使用多线程的标记-整理算法，在 JDK1.6才开始提供。
+
+在 JDK1.6 之前，新生代使用 ParallelScavenge 收集器只能搭配年老代的 Serial Old 收集器，只能保证新生代的吞吐量优先，无法保证整体的吞吐量，Parallel Old 正是为了在年老代同样提供吞吐量优先的垃圾收集器，如果系统对吞吐量要求比较高，可以优先考虑新生代 Parallel Scavenge和年老代 Parallel Old 收集器的搭配策略。
+
+新生代 Parallel Scavenge 和年老代 Parallel Old 收集器搭配运行过程图：
+
+![](media/15528259785385.jpg)
+
+#### CMS 收集器（多线程标记清除算法）
+
+Concurrent mark sweep(CMS)收集器是一种年老代垃圾收集器，其最主要目标是获取最短垃圾回收停顿时间，和其他年老代使用标记-整理算法不同，它使用多线程的标记-清除算法。
+
+最短的垃圾收集停顿时间可以为**交互比较高**的程序提高用户体验。
+
+CMS 工作机制相比其他的垃圾收集器来说更复杂，整个过程分为以下 4 个阶段：
+
+1. 初始标记
+只是标记一下 GC Roots 能直接关联的对象，速度很快，仍然需要暂停所有的工作线程。
+
+1. 并发标记
+进行 GC Roots 跟踪的过程，和用户线程一起工作，不需要暂停工作线程。
+
+1. 重新标记
+为了修正在并发标记期间，因用户程序继续运行而导致标记产生变动的那一部分对象的标记
+记录，仍然需要暂停所有的工作线程。
+
+1. 并发清除
+清除 GC Roots 不可达对象，和用户线程一起工作，不需要暂停工作线程。
+
+由于耗时最长的并发标记和并发清除过程中， 垃圾收集线程可以和用户现在一起并发工作， 所以总体上来看CMS 收集器的内存回收和用户线程是一起并发地执行。
+
+CMS 收集器工作过程：
+
+![](media/15528261107753.jpg)
+
+#### G1 收集器
+
+Garbage first 垃圾收集器是目前垃圾收集器理论发展的最前沿成果，相比与 CMS 收集器，G1 收集器两个最突出的改进是：
+
+1. 基于标记-整理算法，不产生内存碎片。
+
+2. 可以非常精确控制停顿时间，在不牺牲吞吐量前提下，实现低停顿垃圾回收。
+
+G1 收集器避免全区域垃圾收集，它把堆内存划分为大小固定的几个独立区域，并且跟踪这些区域
+的垃圾收集进度，同时在后台维护一个优先级列表，每次根据所允许的收集时间， 优先回收垃圾
+最多的区域。区域划分和优先级区域回收机制，确保 G1 收集器可以在有限时间获得最高的垃圾收集效率。
+
+G1是一款面向服务端应用的收集器, 主要目标用于配备**多颗CPU**的服务器治理**大内存**. 
+
 ### 垃圾回收动作执行的算法
 垃圾回收算法可以分为三类，都基于标记-清除（复制）算法：
 * Serial算法（单线程）
@@ -805,3 +901,181 @@ Java的普通对象存活在堆中。与栈不同，堆的空间不会随着方�
 只在递归调用的时候使用，而且只能对于写成尾递归形式的递归进行优化
 正在运行的方法的堆和栈空间正是优化的目标
 
+### Java四种引用类型
+#### 引用与对象
+每种编程语言都有自己操作内存中元素的方式，例如在 C 和 C++ 里是通过指针，而在 Java 中则是通过“引用”。
+在 Java 中一切都被视为了对象，但是我们操作的标识符实际上是对象的一个引用（reference）。
+
+```java
+//创建一个引用，引用可以独立存在，并不一定需要与一个对象关联
+String s;
+```
+通过将这个叫“引用”的标识符指向某个对象，之后便可以通过这个引用来实现操作对象了。
+
+```java
+String str = new String("abc");
+System.out.println(str.toString());
+```
+在 JDK1.2 之前，Java中的定义很传统：如果 reference 类型的数据中存储的数值代表的是另外一块内存的起始地址，就称为这块内存代表着一个引用。
+Java 中的垃圾回收机制在判断是否回收某个对象的时候，都需要依据“引用”这个概念。
+在不同垃圾回收算法中，对引用的判断方式有所不同：
+
+* 引用计数法：为每个对象添加一个引用计数器，每当有一个引用指向它时，计数器就加1，当引用失效时，计数器就减1，当计数器为0时，则认为该对象可以被回收（目前在Java中已经弃用这种方式了）。
+* 可达性分析算法：从一个被称为 GC Roots 的对象开始向下搜索，如果一个对象到GC Roots没有任何引用链相连时，则说明此对象不可用。
+
+JDK1.2 之前，一个对象只有“已被引用”和"未被引用"两种状态，这将无法描述某些特殊情况下的对象，比如，当内存充足时需要保留，而内存紧张时才需要被抛弃的一类对象。
+
+#### 四种引用类型
+所以在 JDK.1.2 之后，Java 对引用的概念进行了扩充，将引用分为了：强引用（Strong Reference）、软引用（Soft Reference）、弱引用（Weak Reference）、虚引用（Phantom Reference）4 种，这 4 种引用的强度依次减弱。
+
+##### 一，强引用
+Java中默认声明的就是强引用，比如：
+
+```java
+Object obj = new Object(); //只要obj还指向Object对象，Object对象就不会被回收
+obj = null;  //手动置null
+
+```只要强引用存在，垃圾回收器将永远不会回收被引用的对象，哪怕内存不足时，JVM也会直接抛出OutOfMemoryError，不会去回收。如果想中断强引用与对象之间的联系，可以显示的将强引用赋值为null，这样一来，JVM就可以适时的回收对象了
+
+##### 二，软引用
+软引用是用来描述一些非必需但仍有用的对象。在内存足够的时候，软引用对象不会被回收，只有在内存不足时，系统则会回收软引用对象，如果回收了软引用对象之后仍然没有足够的内存，才会抛出内存溢出异常。这种特性常常被用来实现缓存技术，比如网页缓存，图片缓存等。
+在 JDK1.2 之后，用java.lang.ref.SoftReference类来表示软引用。
+
+下面以一个例子来进一步说明强引用和软引用的区别：
+在运行下面的Java代码之前，需要先配置参数 -Xms2M -Xmx3M，将 JVM 的初始内存设为2M，最大可用内存为 3M。
+
+首先先来测试一下强引用，在限制了 JVM 内存的前提下，下面的代码运行正常
+
+```java
+public class TestOOM {
+    
+    public static void main(String[] args) {
+         testStrongReference();
+    }
+    private static void testStrongReference() {
+        // 当 new byte为 1M 时，程序运行正常
+        byte[] buff = new byte[1024 * 1024 * 1];
+    }
+}
+```
+但是如果我们将
+
+`byte[] buff = new byte[1024 * 1024 * 1];`
+替换为创建一个大小为 2M 的字节数组
+
+`byte[] buff = new byte[1024 * 1024 * 2];`
+则内存不够使用，程序直接报错，强引用并不会被回收
+
+
+接着来看一下软引用会有什么不一样，在下面的示例中连续创建了 10 个大小为 1M 的字节数组，并赋值给了软引用，然后循环遍历将这些对象打印出来。
+
+```java
+public class TestOOM {
+    private static List<Object> list = new ArrayList<>();
+    public static void main(String[] args) {
+         testSoftReference();
+    }
+    private static void testSoftReference() {
+        for (int i = 0; i < 10; i++) {
+            byte[] buff = new byte[1024 * 1024];
+            SoftReference<byte[]> sr = new SoftReference<>(buff);
+            list.add(sr);
+        }
+        
+        System.gc(); //主动通知垃圾回收
+        
+        for(int i=0; i < list.size(); i++){
+            Object obj = ((SoftReference) list.get(i)).get();
+            System.out.println(obj);
+        }
+        
+    }
+    
+}
+```
+打印结果：
+
+![662236-20180922194016719-117632363](media/662236-20180922194016719-117632363.png)
+
+我们发现无论循环创建多少个软引用对象，打印结果总是只有最后一个对象被保留，其他的obj全都被置空回收了。
+这里就说明了在内存不足的情况下，软引用将会被自动回收。
+值得注意的一点 , 即使有 byte[] buff 引用指向对象, 且 buff 是一个strong reference, 但是 SoftReference sr 指向的对象仍然被回收了，这是因为Java的编译器发现了在之后的代码中, buff 已经没有被使用了, 所以自动进行了优化。
+如果我们将上面示例稍微修改一下：
+
+```java
+    private static void testSoftReference() {
+        byte[] buff = null;
+
+        for (int i = 0; i < 10; i++) {
+            buff = new byte[1024 * 1024];
+            SoftReference<byte[]> sr = new SoftReference<>(buff);
+            list.add(sr);
+        }
+
+        System.gc(); //主动通知垃圾回收
+        
+        for(int i=0; i < list.size(); i++){
+            Object obj = ((SoftReference) list.get(i)).get();
+            System.out.println(obj);
+        }
+
+        System.out.println("buff: " + buff.toString());
+    }
+```
+则 buff 会因为强引用的存在，而无法被垃圾回收，从而抛出OOM的错误。
+
+
+如果一个对象惟一剩下的引用是软引用，那么该对象是软可及的（softly reachable）。垃圾收集器并不像其收集弱可及的对象一样尽量地收集软可及的对象，相反，它只在真正 “需要” 内存时才收集软可及的对象。
+
+##### 三，弱引用
+弱引用的引用强度比软引用要更弱一些，无论内存是否足够，只要 JVM 开始进行垃圾回收，那些被弱引用关联的对象都会被回收。在 JDK1.2 之后，用 java.lang.ref.WeakReference 来表示弱引用。
+我们以与软引用同样的方式来测试一下弱引用：
+
+```java
+    private static void testWeakReference() {
+        for (int i = 0; i < 10; i++) {
+            byte[] buff = new byte[1024 * 1024];
+            WeakReference<byte[]> sr = new WeakReference<>(buff);
+            list.add(sr);
+        }
+        
+        System.gc(); //主动通知垃圾回收
+        
+        for(int i=0; i < list.size(); i++){
+            Object obj = ((WeakReference) list.get(i)).get();
+            System.out.println(obj);
+        }
+    }
+```
+打印结果：
+
+![662236-20180922194112309-477100844](media/662236-20180922194112309-477100844.png)
+
+可以发现所有被弱引用关联的对象都被垃圾回收了。
+
+##### 四，虚引用
+虚引用是最弱的一种引用关系，如果一个对象仅持有虚引用，那么它就和没有任何引用一样，它随时可能会被回收，在 JDK1.2 之后，用 PhantomReference 类来表示，通过查看这个类的源码，发现它只有一个构造函数和一个 get() 方法，而且它的 get() 方法仅仅是返回一个null，也就是说将永远无法通过虚引用来获取对象，虚引用必须要和 ReferenceQueue 引用队列一起使用。
+
+```java
+public class PhantomReference<T> extends Reference<T> {
+    /**
+     * Returns this reference object's referent.  Because the referent of a
+     * phantom reference is always inaccessible, this method always returns
+     * <code>null</code>.
+     *
+     * @return  <code>null</code>
+     */
+    public T get() {
+        return null;
+    }
+    public PhantomReference(T referent, ReferenceQueue<? super T> q) {
+        super(referent, q);
+    }
+}
+```
+那么传入它的构造方法中的 ReferenceQueue 又是如何使用的呢？
+
+##### 五，引用队列（ReferenceQueue）
+引用队列可以与软引用、弱引用以及虚引用一起配合使用，当垃圾回收器准备回收一个对象时，如果发现它还有引用，那么就会在回收对象之前，把这个引用加入到与之关联的引用队列中去。程序可以通过判断引用队列中是否已经加入了引用，来判断被引用的对象是否将要被垃圾回收，这样就可以在对象被回收之前采取一些必要的措施。
+
+与软引用、弱引用不同，虚引用必须和引用队列一起使用。
