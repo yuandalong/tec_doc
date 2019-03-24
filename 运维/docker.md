@@ -64,10 +64,12 @@ docker pull ubuntu:13.10
 ```shell
 docker search httpd
 ```
+
 ### 创建镜像
 当我们从docker镜像仓库中下载的镜像不能满足我们的需求时，我们可以通过以下两种方式对镜像进行更改。
 1. 从已经创建的容器中更新镜像，并且提交这个镜像
 2. 使用 Dockerfile 指令来创建一个新的镜像
+
 #### 更新镜像
 更新镜像之前，我们需要使用镜像来创建一个容器。
 
@@ -88,6 +90,7 @@ docker commit -m="has update" -a="runoob" e218edb10161 runoob/ubuntu:v2
 
 可使用docker images命令来查看新镜像
 注意此时只是提交到本地仓库，类似git的commit，要提交到远程仓库的话需要docker push
+
 #### 构建镜像
 构建镜像使用docker build 命令，需要先创建一个 Dockerfile 文件，其中包含一组指令来告诉 Docker 如何构建我们的镜像。
 
@@ -121,6 +124,13 @@ docker build -t runoob/centos:6.7 .
 docker tag 860c279d2fec runoob/centos:dev
 ```
 docker tag 镜像ID，这里是 860c279d2fec ,用户名称、镜像源名(repository name)和新的标签名(tag)。
+
+### 删除镜像 rmi
+
+```shell
+docker rmi image_id
+```
+
 ## 常用容器命令
 ### 首次启动容器 run
 #### 运行容器内应用程序
@@ -190,6 +200,22 @@ docker restart amazing_cori
 注意start和run命令的区别，run 只在第一次运行时使用，将镜像放到容器中，以后再次启动这个容器时，只需要使用命令docker start 即可。
 start命令必须知道docker的id或者name，可通过docker ps -a来查看所有状态的容器列表
 
+### 连接正在运行的容器 exec
+
+```shell
+docker exec -it 775c7c9ee1e1 /bin/bash
+```
+**docker在1.3.X版本之后可用**
+除了exec外，还有其他几种方法：
+1. attach
+    docker attach 容器ID也可以连接运行中的容器，但使用该命令有一个问题。当多个窗口同时使用该命令进入该容器时，所有的窗口都会同步显示。如果有一个窗口阻塞了，那么其他窗口也无法再进行操作。
+    因为这个原因，所以docker attach命令不太适合于生产环境，平时自己开发应用时可以使用该命令
+2. SSH
+    在镜像（或容器）中安装SSH Server，把容器看成普通服务器ssh连接就行了 
+3. 使用nsenter进入Docker容器 
+    具体参考文档：[什么是nsenter](https://github.com/jpetazzo/nsenter)
+
+
 ### 映射本机端口 run -p
 通过docker运行web服务时，可指定本机端口映射到docker容器上
 
@@ -199,6 +225,7 @@ docker run -d -P training/webapp python app.py
 * -d:让容器在后台运行。
 * -P:将容器内部使用的网络端口映射到我们使用的主机上。本机端口随机
 * -p:指定本机端口，如-p 5000:5000
+
 #### 查看docker端口和本机的映射
 通过docker ps命令查看PORTS列可查看本机所有docker端口映射关系
 
@@ -233,3 +260,60 @@ docker inspect bf08b7f2cd89
 docker rm wizardly_chandrasekhar
 ```
 删除容器时，容器必须是停止状态，否则会报错
+
+### 重命名容器 rename
+
+```shell
+docker rename 容器id new_name
+```
+
+### 修改端口映射
+
+容器初始化时可通过run命令带-P随机指定或者-p 8001:8000来指定具体映射端口，但如果容器已经创建了，再要修改端口的话start命令不支持-P了，可以通过以下几种方法修改：
+
+#### 先提交镜像再设置端口
+1. 提交一个运行中的容器为镜像
+
+    ```shell
+docker commit containerid foo/live
+```
+
+2. 运行镜像并添加端口
+
+    ```shell
+docker run -d -p 8000:80 foo/live /bin/bash
+```
+
+#### 通过iptable端口映射
+1. 查看容器ip
+
+    ```shell
+docker inspect <container-name | id> | grep IPAddress
+```
+    这一步后会输出容器的ip地址，端口绑定时会使用。
+
+2. 端口绑定
+
+    ```shell
+sudo iptables -t nat -A PREROUTING  -p tcp -m tcp --dport hostport -j DNAT --to-destination  containerip:port
+```
+    举个例子，使用命令
+
+    ```shell
+sudo iptables -t nat -A PREROUTING  -p tcp -m tcp --dport 9030 -j DNAT --to-destination  172.22.0.2:9090
+```
+
+    将容器的9090端口和宿主机的9030端口绑定了起来，其中172.22.0.2是容器的ip地址。
+
+3. 保存规则
+
+    ```shell
+sudo iptables-save
+```
+
+4. 查看动态绑定的端口
+
+    `docker port <container-name | id> `不能查看使用iptables绑定的端口，要使用命令 `iptables -t nat -nvL | grep container-ip` 来查看。
+    
+#### 修改配置文件
+比较麻烦，参考[https://blog.csdn.net/u011241780/article/details/79457876](https://blog.csdn.net/u011241780/article/details/79457876)
