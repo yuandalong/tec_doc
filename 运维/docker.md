@@ -144,7 +144,7 @@ docker run ubuntu:15.10 /bin/echo "Hello world"
 各个参数解析：
 * docker: Docker 的二进制执行文件。
 * run:与前面的 docker 组合来运行一个容器。
-* ubuntu:15.10指定要运行的镜像，Docker首先从本地主机上查找镜像是否存在，如果不存在，Docker 就会从镜像仓库 Docker Hub 下载公共镜像。
+* ubuntu:15.10指定要运行的镜像，Docker首先从本地主机上查找镜像是否存在，如果不存在，Docker 就会从镜像仓库 Docker Hub 下载公共镜像，ubuntu是镜像名，15.10是镜像tag，不带tag的话会使用镜像的latest版本，但注意有些镜像没有latest，例如es，所以必须指定tag。
 * /bin/echo "Hello world": 在启动的容器里执行的命令
 
 **注意run命令会创建一个新容器**，如果只是使用已有容器的话先ps找到容器id，然后start id就可以了，交互模式的话加上-i
@@ -224,7 +224,7 @@ docker run -d -P training/webapp python app.py
 ```
 * -d:让容器在后台运行。
 * -P:将容器内部使用的网络端口映射到我们使用的主机上。本机端口随机
-* -p:指定本机端口，如-p 5000:5000
+* -p:指定本机端口，如-p 5000:5000，同时绑定多个用多个-p，如 -p 123:123 -p 456:456
 
 #### 查看docker端口和本机的映射
 通过docker ps命令查看PORTS列可查看本机所有docker端口映射关系
