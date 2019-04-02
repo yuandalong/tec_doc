@@ -280,7 +280,7 @@ git init --bare sample.git
 
 
 
-#### **git本地关联远程项目**
+#### git本地关联远程项目
 
 1.     选择目录
           进入本地需要关联的目录（比如demo目录），然后git init
@@ -301,17 +301,17 @@ git init --bare sample.git
 　　 window本地公共秘钥地址：C:\Users\Administrator\.ssh\id_rsa.pub
 　　 linux本地公共秘钥地址：~/.ssh/
 
-#### **配置用户名和邮箱**
+#### 配置用户名和邮箱
 
 ```
-//global为全局的，local为当前项目的,system为当前系统用户的
+//global为全局的，local为当前项目的,system为当前系统用户的，local必须在git目录下执行
 git config --global user.name "youname"
 git config --global user.email "youeamil@email.com"
 //查看用户名和邮箱
 git config -l
 ```
 
-#### **==修改关联的远程仓库地址==**
+#### 修改关联的远程仓库地址
 方法有三种
 
 
@@ -336,13 +336,19 @@ git remote add origin [url]
 
 修改完成后需要push本地所有分支到远程
 
-### 更新分支列表
+#### 更新分支列表
 
 ```shell
 git remote update origin --prune
 ```
 
-### **linux 升级git版本**
+#### git status中文8进制显示解决办法
+
+```shell
+git config --global core.quotepath false
+```
+
+#### linux 升级git版本
 
 ```shell
 yum -y remove git
