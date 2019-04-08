@@ -69,9 +69,8 @@ git reflog
 ```
 
 #### 撤销修改
-撤销修改有两种情况，一种撤销工作空间的修改，一种是撤销暂存区的修改
-
-如果是已经commit了的，那就只能回退版本了
+##### 撤销未commit的
+撤销未push的修改有两种情况，一种撤销工作空间的修改，一种是撤销暂存区的修改
 
 如果已经push了，改了重新add commit push吧
 1. 撤销工作空间的修改
@@ -82,13 +81,33 @@ git checkout -- readme.txt
 ```
 
 2. 撤销暂存区的修改
-如果修改已经add了，此时checkout回从暂存区拉取文件，当想从版本库中恢复文件时，就需要用到reset命令
+如果修改已经add了，此时checkout会从暂存区拉取文件，当想从版本库中恢复文件时，就需要用到reset命令
 
 reset命令既可以回退版本，也可以把暂存区的修改回退到工作区。当我们用HEAD时，表示最新的版本
 ```
 //相当于撤销add，reset后可使用checkout来从版本库拉取文件到工作空间
 git reset HEAD readme.txt
 ```
+
+##### 撤销已经commit或push的
+其实就是撤销commit，如果已经push了，则再进行强制push就行了
+
+撤销commit分两种，一种reset，不会保留修改的代码，一种revert，会保留原代码并生成新的提交
+* revert 是放弃指定提交的修改，但是会生成一次新的提交，需要填写提交注释，以前的历史记录都在。
+* reset是指将HEAD指针指到指定提交，历史记录中不会出现放弃的提交记录。
+
+```shell
+# 回退到指定版本，不保留原更改代码
+git reset --hard e377f60e28c8b84158
+# 回退到指定版本，保留原更改代码，且生成新的提交
+git revert e377f60e28c8b84158
+```
+强制提交 -f
+
+```shell
+git push -f origin master
+```
+
 #### 添加远程仓库
 远程仓库分为https和ssh，ssh的话需要在git仓库里添加本机的ssh公钥，https的话需要设置你的用户名和密码
 
@@ -112,7 +131,7 @@ git push -u origin master
 git push origin master
 ```
 
-#### 创建分支
+#### 创建本地分支
 
 ##### 第一种方法
 ```
@@ -125,6 +144,18 @@ git checkout -b dev
 git branch dev
 ..切换到dev分支
 git checkout dev
+```
+
+#### 创建远程分支
+分两步：
+1. 创建本地分支
+2. 提交本地分支到新的远程分支
+
+```shell
+#创建本地分支
+git checkout -b dbg_lichen_star
+#提交本地分支到指定的新的远程分支
+git push origin dbg_lichen_star:dbg_lichen_star
 ```
 
 #### 查看当前分支
