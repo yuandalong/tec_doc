@@ -150,12 +150,14 @@ git checkout dev
 分两步：
 1. 创建本地分支
 2. 提交本地分支到新的远程分支
-
+3. 创建本地分支和远程分支的关联
 ```shell
 #创建本地分支
 git checkout -b dbg_lichen_star
 #提交本地分支到指定的新的远程分支
 git push origin dbg_lichen_star:dbg_lichen_star
+#关联远程和本地分支
+git branch --set-upstream-to=origin/dbg_lichen_star dbg_lichen_star
 ```
 
 #### 查看当前分支
@@ -270,7 +272,9 @@ git checkout -b branch-name origin/branch-name
 #### 建立本地分支和远程分支的关联
 
 ```
+#貌似已失效了，建议用带to的，注意两个命令本地和远程分支顺序的区别
 git branch --set-upstream branch-name origin/branch-name
+git branch --set-upstream-to=origin/branch-name branch-name
 ```
 #### 标签相关
 git的标签对应的是一个版本号

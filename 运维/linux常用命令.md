@@ -28,3 +28,10 @@ find . -name '123'
 * p 管道
 * l 符号链接
 * **f 普通文件**
+
+### scp
+```shell
+scp source user@ip:/path
+```
+指定端口的话用scp **-P**
+mac本地scp到远程服务器可以结合**sshpass**命令做到免密，或者配置服务器间的信任
