@@ -137,3 +137,67 @@ rewrite 匹配规则 重定向地址;
         }
         rewrite "^/(.*)$" http://$rw;
 ```
+
+## nginx_heath模块
+为什么会使用nginx_heath 这个模块，主要是如nginx+tomcat部署的时，tomcat挂了之后nginx->upstream 轮询是可以踢掉挂掉的tomcat服务。
+
+实现nginx_heath目前主要有三种方法
+1. ngx_http_proxy_module 模块和ngx_http_upstream_module模块（自带）
+    官网地址：http://nginx.org/cn/docs/http/ngx_http_proxy_module.html#proxy_next_upstream
+2. nginx_upstream_check_module模块
+    官网网址：https://github.com/yaoweibin/nginx_upstream_check_module
+3. ngx_http_healthcheck_module模块
+    官网网址：http://wiki.nginx.org/NginxHttpHealthcheckModule
+
+目前主要使用的是第二种解决方式
+
+### 添加模块
+
+首先需要添加【nginx_upstream_check_module】模块：http://pan.baidu.com/s/1caLNUe
+
+`./nginx -V`
+
+查看已经添加的nginx模块如：`--prefix=/opt/nginx-new --with-http_ssl_module --with-http_v2_module --with-http_stub_status_module --with-pcre`
+
+进入nginx源码中为nginx打补丁：`patch -p0 < ../nginx_upstream_check_module-master/check_1.5.12+.patch`，这个需要合适的版本，不然会出现打补丁失败，如果提示没有patch命令的话，请先安装`yum -y install patch`
+
+追加nginx_upstream_check_module模块：`--prefix=/opt/nginx-new --with-http_ssl_module --with-http_v2_module --with-http_stub_status_module --with-pcre --add-module=/home/software/nginx_upstream_check_module-master`
+
+然后make
+
+### 配置upstream加入健康检查
+
+```shell
+upstream name{
+　　server 10.144.48.157:8205;
+　　server 119.29.204.12:8889;
+　　check interval=3000 rise=2 fall=3 timeout=3000 type=tcp;
+}
+```
+
+上面配置的意思是，对name这个负载均衡条目中的所有节点，每个3秒检测一次，请求2次正常则标记 realserver状态为up，如果检测 3 次都失败，则标记 realserver的状态为down，超时时间为3秒。
+
+指定参数的意思：
+- interval：向后端发送的健康检查包的间隔。
+- fall(fall_count): 如果连续失败次数达到fall_count，服务器就被认为是down。
+- rise(rise_count): 如果连续成功次数达到rise_count，服务器就被认为是up。
+- timeout: 后端健康请求的超时时间。
+- default_down: 设定初始时服务器的状态，如果是true，就说明默认是down的，如果是false，就是up的。默认值是true，也就是一开始服务器认为是不可用，要等健康检查包达到一定成功次数以后才会被认为是健康的。
+- type：健康检查包的类型，现在支持以下多种类型
+- tcp：简单的tcp连接，如果连接成功，就说明后端正常。
+- ssl_hello：发送一个初始的SSL hello包并接受服务器的SSL hello包。
+- http：发送HTTP请求，通过后端的回复包的状态来判断后端是否存活。
+- mysql: 向mysql服务器连接，通过接收服务器的greeting包来判断后端是否存活。
+- ajp：向后端发送AJP协议的Cping包，通过接收Cpong包来判断后端是否存活。
+- port: 指定后端服务器的检查端口。你可以指定不同于真实服务的后端服务器的端口，比如后端提供的是443端口的应用，你可以去检查80端口的状态来判断后端健康状况。默认是0，表示跟后端server提供真实服务的端口一样。该选项出现于Tengine-1.4.0。
+
+### 配置健康检查状态查看页面
+
+```shell
+location /nstatus {
+　　check_status;
+　　access_log off;
+}
+```
+
+![](media/15559873410798.jpg)

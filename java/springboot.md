@@ -1,4 +1,4 @@
-### Spring Boot的自动配置原理
+# Spring Boot的自动配置原理
 在微服务概念兴起的今天，很多公司转型使用微服务作为架构。在技术选型上Spring Cloud 是非常好的选择，它提供了一站式的分布式系统解决方案，而Spring Cloud中的每个组件都是基于Spring Boot构建的，Spring Boot提供J2EE一站式解决方案，具有以下优点：
 
 * 快速创建独立运行的Spring项目以及与主流框架集成
@@ -10,7 +10,7 @@
 * 与云计算的天然集成
 
 今天就深入探讨以下Spring Boot 是如何做到自动配置的
-#### @EnableAutoConfiguration的作用
+## @EnableAutoConfiguration的作用
 @EnableAutoConfiguration注解的作用就是利用EnableAutoConfigurationImportSelector给容器中导入一些组件，下面具体看一下是如何做到的。
 Spring Boot 程序入口有@SpringBootApplication 注解。
 
@@ -23,11 +23,11 @@ Spring Boot 程序入口有@SpringBootApplication 注解。
 
 Spring Boot程序的入口会加载主配置类，并且通过@EnableAutoConfiguration 开启自动配置的功能。该注解会引入EnableAutoConfigurationImportSelector类。该类又会继承AutoConfigurationImportSelector类
 
-#### EnableAutoConfigurationImportSelector
+## EnableAutoConfigurationImportSelector
 
 ![5611237-62076df773dddf28](media/5611237-62076df773dddf28.png)
 
-#### AutoConfigurationImportSelector
+## AutoConfigurationImportSelector
 
 AutoConfigurationImportSelector中方法selectImports的源码如下：
 
@@ -40,7 +40,7 @@ AutoConfigurationImportSelector中方法selectImports的源码如下：
 
 
 
-#### SpringFactoriesLoader
+## SpringFactoriesLoader
 
 SpringFactoriesLoader类中给的loadFactoryNames的源码如下
 
@@ -59,7 +59,7 @@ public static final String FACTORIES_RESOURCE_LOCATION = "META-INF/spring.factor
 
 
 看到的非常多的xxxxAutoConfiguration类，这些类都是容器中的一个组件，加入到容器中，用他们做自动配置。
-#### HttpEncodingAutoConfiguration
+## HttpEncodingAutoConfiguration
 在这么多xxxxAutoConfiguration中，我们以HttpEncodingAutoConfiguration（Http自动编码）为例
 
 ```java
@@ -211,8 +211,8 @@ getMatches又调用了MatchType的matches方法。
 3. 我们再来看这个自动配置类中到底配置了哪些组件；（只要我们要用的组件有，我们就不需要再来配置了）
 4. 给容器中自动配置类添加组件的时候，会从properties类中获取某些属性。我们就可以在配置文件中指定这些属性的值；
 
-### springboot 是如何帮我们省去web.xml配置的
-#### 概述
+# springboot 是如何帮我们省去web.xml配置的
+## 概述
 
 最开始使用原生的springmvc时，总是免不了有如下xml配置
 
@@ -252,7 +252,7 @@ getMatches又调用了MatchType的matches方法。
 ```
 但是，切换到springboot之后，web.xml之类的繁琐的配置基本上都不见了。出于好奇研究了下springboot究竟帮我们做了什么，我们可以免于这样的繁琐配置。
 
-#### Servlet3.0规范
+## Servlet3.0规范
 
 首先研究的第一点，为什么web.xml不见了。刚开始使用原生servlet（不使用web框架），web.xml就是非常重要的一个配置，无论是servlet、filter、listener都需要在web.xml里面配置下。
 
@@ -273,14 +273,14 @@ public interface ServletContainerInitializer {
 }
 
 ```
-#### springboot的实现
+## springboot的实现
 
 首先spring在META-INF/services下配置了这个类，让整个web容器启动后可以找到并启动这个类
 
 ![2588514-beb2299beb23f29b](media/2588514-beb2299beb23f29b.png)
 
 
-##### SpringServletContainerInitializer
+## SpringServletContainerInitializer
 
 ```java
 /**
@@ -313,7 +313,7 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 
 startup的逻辑很简单，web容器启动后，调用所有WebApplicationInitializer的onStartup方法。
 
-##### WebApplicationInitializer 的实现SpringBootServletInitializer
+## WebApplicationInitializer 的实现SpringBootServletInitializer
 
 ```java
 @Override
@@ -339,7 +339,7 @@ protected WebApplicationContext createRootApplicationContext(
 
 上述分析也解释了为啥把springboot应用部署到机器上，tomcat能够找到springboot的入口，并启动它。
 
-##### DispatcherServlet的配置
+## DispatcherServlet的配置
 
 关于springboot如何加载类并启动的这里就不介绍了。 
 这里说明下究竟Springboot如何配置DispatcherServlet的 
@@ -350,7 +350,7 @@ protected WebApplicationContext createRootApplicationContext(
 1）当类路径下存在DispatcherServlet时候，该配置生效。 
 2）这个配置会在DispatcherServletAutoConfiguration配置完之后再配置。
 
-##### DispatcherServletAutoConfiguration配置
+## DispatcherServletAutoConfiguration配置
 
 ![2588514-b03c7108a7070eef](media/2588514-b03c7108a7070eef.png)
 
@@ -358,7 +358,93 @@ protected WebApplicationContext createRootApplicationContext(
 
 看到这里就是我们非常熟悉的springboot的使用了。springboot在DispatcherServletConfiguration这个类里对DispatcherServlet进行了配置以及注册。
 
-#### 总结
+## 总结
 
 服务器如tomcat在web应用启动后，加载并启动springboot，springboot通过@AutoConfiguration、@Bean、@Conditional等注解自动配置了DispatcherServlet。
 
+# spring boot优雅停服
+## kill -9 与 -15的区别
+- -9  可以理解为操作系统从内核级别强行杀死某个进程
+- -15 则可以理解为发送一个通知，告知应用主动关闭。
+
+## spring boot配合 kill -15优雅停服
+
+1. bean里覆盖destroy方法
+    ```java
+    @Component
+    public class TestDisposableBean implements DisposableBean {
+        @Override
+        public void destroy() throws Exception {
+            System.out.println("测试 Bean 已销毁 ...");
+        }
+    }
+    ```
+
+1. 启动类里增加ShutdownHook
+    
+    ```java
+    @SpringBootApplication
+    @RestController
+    public class TestShutdownApplication implements DisposableBean {
+        public static void main(String[] args) {
+            SpringApplication.run(TestShutdownApplication.class, args);
+    
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        System.out.println("执行 ShutdownHook ...");
+                    }
+                }));
+        }
+    }
+    ```
+1. kill -15 pid
+
+## springboot 如何处理 -15 TERM Signal
+尝试从日志开始着手分析， AnnotationConfigEmbeddedWebApplicationContext 打印出了 Closing 的行为，直接去源码中一探究竟，最终在其父类AbstractApplicationContext 中找到了关键的代码：
+
+```java
+@Override
+  public void registerShutdownHook() {
+    if (this.shutdownHook == null) {
+      this.shutdownHook = new Thread() {
+        @Override
+        public void run() {
+          synchronized (startupShutdownMonitor) {
+            doClose();
+          }
+        }
+      };
+      Runtime.getRuntime().addShutdownHook(this.shutdownHook);
+    }
+  }
+
+  @Override
+  public void close() {
+    synchronized (this.startupShutdownMonitor) {
+      doClose();
+      if (this.shutdownHook != null) {
+        Runtime.getRuntime().removeShutdownHook(this.shutdownHook);
+      }
+    }
+  }
+
+  protected void doClose() {
+    if (this.active.get() && this.closed.compareAndSet(false, true)) {
+      LiveBeansView.unregisterApplicationContext(this);
+      // 发布应用内的关闭事件
+      publishEvent(new ContextClosedEvent(this));
+      // Stop all Lifecycle beans, to avoid delays during individual destruction.
+      if (this.lifecycleProcessor != null) {
+        this.lifecycleProcessor.onClose();
+      }
+      // spring 的 BeanFactory 可能会缓存单例的 Bean
+      destroyBeans();
+      // 关闭应用上下文&BeanFactory
+      closeBeanFactory();
+      // 执行子类的关闭逻辑
+      onClose();
+      this.active.set(false);
+    }
+  }
+```

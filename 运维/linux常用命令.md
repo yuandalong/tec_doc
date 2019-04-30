@@ -1,6 +1,6 @@
-### 文件查找
-#### find
-##### 查文件夹里包含关键字的文件
+
+# find
+## 查文件夹里包含关键字的文件
 find和grep结合使用
 ```shell
 find . |xargs grep -ri '关键字' -l
@@ -10,13 +10,13 @@ find . |xargs grep -ri '关键字' -l
 * -i 忽略大小写
 * -l 只显示文件名，一个文件多个匹配的话只显示一个，不加的话会显示匹配的文件内容，切会显示一个文件的所有匹配内容，例如查错误日志Error关键字，会造成控制台打印出n多内容
 
-##### 根据文件名查找文件
+## 根据文件名查找文件
 ```shell
 find . -name '123'
 ```
 .表示当前目录
 
-##### 查当前目录大于800M的文件
+## 查当前目录大于800M的文件
 ```shell
  find . -type f -size +800M
 ```
@@ -29,9 +29,18 @@ find . -name '123'
 * l 符号链接
 * **f 普通文件**
 
-### scp
+# scp
 ```shell
 scp source user@ip:/path
 ```
 指定端口的话用scp **-P**
 mac本地scp到远程服务器可以结合**sshpass**命令做到免密，或者配置服务器间的信任
+
+# /bin/bash -c
+通过-c参数来指定要执行的命令，通常用来在本机执行非本机的命令，如docker在宿主机执行容器命令：
+
+```shell
+docker exec -it $DOCKER_ID /bin/bash -c 'cd /packages/detectron && python tools/train.py'
+```
+
+

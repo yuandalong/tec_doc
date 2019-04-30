@@ -1,16 +1,18 @@
-## Docker 教程
+# Docker 教程
+
 [教程](http://www.runoob.com/docker/docker-tutorial.html)
-## 核心概念
+
+# 核心概念
 * 镜像：类似虚拟机镜像
 * 容器：类似linux系统环境，运行和隔离应用。容器从镜像启动的时候，docker会在镜像的最上一层创建一个可写层，镜像本身是只读的，保持不变。
 * 仓库：每个仓库存放某一类镜像。
 
 ![](media/15532597427687.jpg)
 
-### 容器、仓库、镜像运行关系图
+## 容器、仓库、镜像运行关系图
 ![](media/15532597744265.jpg)
 
-## MacOS Docker 安装
+# MacOS Docker 安装
 ```shell
 brew cask install docker
 ```
@@ -20,15 +22,15 @@ brew cask install docker
 docker --version
 ```
 
-### 镜像加速
+## 镜像加速
 在任务栏点击 Docker for mac 应用图标 -> Perferences... -> Daemon -> Registry mirrors。在列表中填写加速器地址即可。修改完成之后，点击 Apply & Restart 按钮，Docker 就会重启并应用配置的镜像地址了
 
 国内镜像列表：
 * http://registry.docker-cn.com 官方中国镜像，但只有流行的公有镜像。私有镜像仍需要从美国镜像库中拉取。ps:2019/03/20访问显示没有备案，大写的尴尬
 * http://hub-mirror.c.163.com 网易提供的镜像，目前在用
 
-## 常用镜像命令
-### 本机docker镜像列表 images
+# 常用镜像命令
+## 本机docker镜像列表 images
 
 ```shell
 docker images
@@ -54,23 +56,23 @@ docker run -t -i ubuntu:15.10 /bin/bash
 docker run -t -i ubuntu:14.04 /bin/bash 
 ```
 
-###获取一个新的镜像 pull
+##获取一个新的镜像 pull
 
 ```shell
 docker pull ubuntu:13.10
 ```
-### 查找镜像 search
+## 查找镜像 search
 
 ```shell
 docker search httpd
 ```
 
-### 创建镜像
+## 创建镜像
 当我们从docker镜像仓库中下载的镜像不能满足我们的需求时，我们可以通过以下两种方式对镜像进行更改。
 1. 从已经创建的容器中更新镜像，并且提交这个镜像
 2. 使用 Dockerfile 指令来创建一个新的镜像
 
-#### 更新镜像
+### 更新镜像
 更新镜像之前，我们需要使用镜像来创建一个容器。
 
 ```shell
@@ -91,7 +93,7 @@ docker commit -m="has update" -a="runoob" e218edb10161 runoob/ubuntu:v2
 可使用docker images命令来查看新镜像
 注意此时只是提交到本地仓库，类似git的commit，要提交到远程仓库的话需要docker push
 
-#### 构建镜像
+### 构建镜像
 构建镜像使用docker build 命令，需要先创建一个 Dockerfile 文件，其中包含一组指令来告诉 Docker 如何构建我们的镜像。
 
 ```shell
@@ -118,22 +120,22 @@ docker build -t runoob/centos:6.7 .
 * -t ：指定要创建的目标镜像名
 * . ：Dockerfile 文件所在目录，可以指定Dockerfile 的绝对路径
 
-### 设置镜像标签 tag
+## 设置镜像标签 tag
 
 ```shell
 docker tag 860c279d2fec runoob/centos:dev
 ```
 docker tag 镜像ID，这里是 860c279d2fec ,用户名称、镜像源名(repository name)和新的标签名(tag)。
 
-### 删除镜像 rmi
+## 删除镜像 rmi
 
 ```shell
 docker rmi image_id
 ```
 
-## 常用容器命令
-### 首次启动容器 run
-#### 运行容器内应用程序
+# 常用容器命令
+## 首次启动容器 run
+### 运行容器内应用程序
 
 ```shell
 docker run ubuntu:15.10 /bin/echo "Hello world"
@@ -148,7 +150,7 @@ docker run ubuntu:15.10 /bin/echo "Hello world"
 * /bin/echo "Hello world": 在启动的容器里执行的命令
 
 **注意run命令会创建一个新容器**，如果只是使用已有容器的话先ps找到容器id，然后start id就可以了，交互模式的话加上-i
-#### 运行交互式的容器
+### 运行交互式的容器 -it
 
 ```shell
 docker run -i -t ubuntu:15.10 /bin/bash
@@ -160,7 +162,7 @@ docker run -i -t ubuntu:15.10 /bin/bash
 -i -t 可连写成-it
 通过运行exit命令或者使用CTRL+D来退出容器。
 
-#### 启动容器（后台模式）
+### 启动容器（后台模式） -d
 
 ```shell
 docker run -d ubuntu:15.10 /bin/sh -c "while true; do echo hello world; sleep 1; done"
@@ -169,7 +171,7 @@ docker run -d ubuntu:15.10 /bin/sh -c "while true; do echo hello world; sleep 1;
 
 在输出中，我们没有看到期望的"hello world"，而是一串长字符2b1b7a428627c51ab8810d541d759f072b4fc75487eed05812646b8534a2fe63,这个长字符串叫做**容器ID**，对每个容器来说都是唯一的，我们可以通过容器ID来查看对应的容器发生了什么。
 
-### 查看docker进程 ps
+## 查看docker进程 ps
 
 ```shell
 docker ps
@@ -180,14 +182,14 @@ ps是查看正在运行的进程。
 -a：查看所有状态的docker，包括已停止的
 
 
-### 停止容器 stop
+## 停止容器 stop
 
 ```shell
 docker stop amazing_cori
 ```
 >需指定docker容器id或name
 
-### 启动已有容器 start
+## 启动已有容器 start
 已经停止的容器，我们可以使用命令 docker start 来启动。
 ```shell
 docker start amazing_cori
@@ -200,7 +202,7 @@ docker restart amazing_cori
 注意start和run命令的区别，run 只在第一次运行时使用，将镜像放到容器中，以后再次启动这个容器时，只需要使用命令docker start 即可。
 start命令必须知道docker的id或者name，可通过docker ps -a来查看所有状态的容器列表
 
-### 连接正在运行的容器 exec
+## 连接正在运行的容器 exec
 
 ```shell
 docker exec -it 775c7c9ee1e1 /bin/bash
@@ -216,7 +218,7 @@ docker exec -it 775c7c9ee1e1 /bin/bash
     具体参考文档：[什么是nsenter](https://github.com/jpetazzo/nsenter)
 
 
-### 映射本机端口 run -p
+## 映射本机端口 run -p
 通过docker运行web服务时，可指定本机端口映射到docker容器上
 
 ```shell
@@ -226,7 +228,7 @@ docker run -d -P training/webapp python app.py
 * -P:将容器内部使用的网络端口映射到我们使用的主机上。本机端口随机
 * -p:指定本机端口，如-p 5000:5000，同时绑定多个用多个-p，如 -p 123:123 -p 456:456
 
-#### 查看docker端口和本机的映射
+### 查看docker端口和本机的映射
 通过docker ps命令查看PORTS列可查看本机所有docker端口映射关系
 
 ![](media/15532554514110.jpg)
@@ -235,7 +237,7 @@ docker run -d -P training/webapp python app.py
 
 ![](media/15532555374211.jpg)
 
-### 查看docker日志 logs
+## 查看docker日志 logs
 docker logs [ID或者名字] 可以查看容器内部的标准输出
 ```shell
 docker logs 2b1b7a428627
@@ -247,31 +249,31 @@ docker logs -f bf08b7f2cd89
 ```
 * -f: 让 docker logs 像使用 tail -f 一样来输出容器内部的标准输出。
 
-### 查看docker的底层信息 inspect
+## 查看docker的底层信息 inspect
 
 ```shell
 docker inspect bf08b7f2cd89
 ```
 使用 docker inspect 来查看 Docker 的底层信息。它会返回一个 JSON 文件记录着 Docker 容器的配置和状态信息。
 
-### 移除容器 rm
+## 移除容器 rm
 
 ```shell
 docker rm wizardly_chandrasekhar
 ```
 删除容器时，容器必须是停止状态，否则会报错
 
-### 重命名容器 rename
+## 重命名容器 rename
 
 ```shell
 docker rename 容器id new_name
 ```
 
-### 修改端口映射
+## 修改端口映射
 
 容器初始化时可通过run命令带-P随机指定或者-p 8001:8000来指定具体映射端口，但如果容器已经创建了，再要修改端口的话start命令不支持-P了，可以通过以下几种方法修改：
 
-#### 先提交镜像再设置端口
+### 先提交镜像再设置端口
 1. 提交一个运行中的容器为镜像
 
     ```shell
@@ -284,7 +286,7 @@ docker commit containerid foo/live
 docker run -d -p 8000:80 foo/live /bin/bash
 ```
 
-#### 通过iptable端口映射
+### 通过iptable端口映射
 1. 查看容器ip
 
     ```shell
@@ -315,5 +317,18 @@ sudo iptables-save
 
     `docker port <container-name | id> `不能查看使用iptables绑定的端口，要使用命令 `iptables -t nat -nvL | grep container-ip` 来查看。
     
-#### 修改配置文件
+### 修改配置文件
 比较麻烦，参考[https://blog.csdn.net/u011241780/article/details/79457876](https://blog.csdn.net/u011241780/article/details/79457876)
+
+## 宿主机执行容器命令 exec结合bash -c
+
+```shell
+docker exec -it c2b3bd589149 /bin/bash -c 'cd /home/dev/deploy_v2.0.1 && ./run.sh'
+```
+
+## 复制本机文件到docker cp
+
+```shell
+#注意与scp类似，dockerId后面是冒号
+docker cp ~/Downloads/deploy_v2.0.1 beb30fcf2368:/root/
+```

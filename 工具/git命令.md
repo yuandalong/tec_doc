@@ -1,5 +1,5 @@
 [git教程url](http://www.liaoxuefeng.com/wiki/0013739516305929606dd18361248578c67b8067c8c017b000)
-#### 添加新创建的文件
+## 添加新创建的文件
 add命令只是把文件修改提交到git版本库被成为stage的缓存区，commit才是提交修改到版本库/r/n
 所以git的提交分两步 add commit
 
@@ -12,38 +12,38 @@ git add .
 git commit -am 'test'
 ```
 
-#### 提交到本地库
+## 提交到本地库
 
 ```
 //m里的内容是提交的说明，git不允许空
 git commit -m 'test'
 ```
 
-#### 提交到远程仓库
+## 提交到远程仓库
 
 ```
 git push
 ```
-#### 创建版本库
+## 创建版本库
 
 ```
 mkdir test
 git init
 ```
 
-#### 查看仓库当前状态
+## 查看仓库当前状态
 
 ```
 git status
 ```
-#### 查看未提交的修改
+## 查看未提交的修改
 
 ```
 git diff
 //查看readme.txt在工作区和版本库里面最新版本的区别
 git diff HEAD -- readme.txt
 ```
-#### 查看修改记录
+## 查看修改记录
 
 ```
 //显示提交时间、说明、版本号、提交人等
@@ -51,7 +51,7 @@ git log
 //一行显示，只显示版本号和说明
 git log --pretty=oneline
 ```
-#### 版本回退
+## 版本回退
 
 ```
 //回退到上一个版本 HEAD表示最新版本,HEAD^表示上一个，两个^表示上两个，太多个版本比如上100个用HEAD~100
@@ -59,7 +59,7 @@ git reset --hard HEAD^
 //回退到指定版本号，版本号没必要写全，前几位就可以了，Git会自动去找，只要能找到唯一的就行
 git reset --hard a204bc4cbbf8faca282116755d7847c4d38e1484
 ```
-#### 本地版本库操作记录查询
+## 本地版本库操作记录查询
 当git版本回滚之后通过git log查看到的最新日志只有回滚后的版本号，回滚前的最新记录会丢失，此时结合reflog命令还可以找到回滚没了的版本号
 即通过reset回滚了之后又想恢复之前的版本，可以通过reflog找到之前的版本ID
 
@@ -68,8 +68,8 @@ git reset --hard a204bc4cbbf8faca282116755d7847c4d38e1484
 git reflog
 ```
 
-#### 撤销修改
-##### 撤销未commit的
+## 撤销修改
+### 撤销未commit的
 撤销未push的修改有两种情况，一种撤销工作空间的修改，一种是撤销暂存区的修改
 
 如果已经push了，改了重新add commit push吧
@@ -89,7 +89,7 @@ reset命令既可以回退版本，也可以把暂存区的修改回退到工作
 git reset HEAD readme.txt
 ```
 
-##### 撤销已经commit或push的
+### 撤销已经commit或push的
 其实就是撤销commit，如果已经push了，则再进行强制push就行了
 
 撤销commit分两种，一种reset，不会保留修改的代码，一种revert，会保留原代码并生成新的提交
@@ -108,7 +108,7 @@ git revert e377f60e28c8b84158
 git push -f origin master
 ```
 
-#### 添加远程仓库
+## 添加远程仓库
 远程仓库分为https和ssh，ssh的话需要在git仓库里添加本机的ssh公钥，https的话需要设置你的用户名和密码
 
 此命令适用于先创建的本地仓库，之后需要提交新项目到远程仓库
@@ -121,7 +121,7 @@ git remote add origin git@git.oschina.net:yuandalong/learning-git.git
 git clone git@github.com:michaelliao/learngit.git
 ```
 
-#### 把修改推送到远程仓库
+## 把修改推送到远程仓库
 第一次推送master分支时，加上了-u参数，Git不但会把本地的master分支内容推送的远程新的master分支，还会把本地的master分支和远程的master分支关联起来，在以后的推送或者拉取时就可以简化命令
 
 ```
@@ -131,14 +131,14 @@ git push -u origin master
 git push origin master
 ```
 
-#### 创建本地分支
+## 创建本地分支
 
-##### 第一种方法
+### 第一种方法
 ```
 //创建dev分支，-b参数表示创建并切换，相当于branch和checkout两个命令的结合
 git checkout -b dev
 ```
-##### 第二种方法
+### 第二种方法
 ```
 //创建dev分支
 git branch dev
@@ -146,7 +146,7 @@ git branch dev
 git checkout dev
 ```
 
-#### 创建远程分支
+## 创建远程分支
 分两步：
 1. 创建本地分支
 2. 提交本地分支到新的远程分支
@@ -160,7 +160,7 @@ git push origin dbg_lichen_star:dbg_lichen_star
 git branch --set-upstream-to=origin/dbg_lichen_star dbg_lichen_star
 ```
 
-#### 查看当前分支
+## 查看当前分支
 会列出所有分支，当前分支会在前面加*
 
 ```
@@ -168,7 +168,7 @@ git branch
 //查看远程仓库所有分支，如果要包含远程仓库刚创建的分支，需要先pull
 git branch -a
 ```
-#### 切换分支
+## 切换分支
 切换分支不光可以切换本地分支，也可以切换远程分支，通过git branch -a查看远程分支，新创建的分支看不到的需要先pull
 
 ```
@@ -177,7 +177,7 @@ git checkout master
 //切换到dev分支
 git checkout dev
 ```
-#### 合并分支
+## 合并分支
 merge命令来合并分支，此时当没有冲突时git会自动使用Fast forward模式来合并分支，Fast forward模式有个问题是合并后在git log中体现不出曾经做过合并，所以可以用--no-ff参数来禁用Fast forward模式
 ```
 //把dev分支合并到当前工作空间的分支
@@ -186,14 +186,14 @@ git merge dev
 git merge --no-ff -m "merge with no-ff" dev
 
 ```
-#### 删除分支
+## 删除分支
 
 ```
 //删除dev分支
 git branch -d dev
 ```
 
-#### 解决冲突
+## 解决冲突
 git解决冲突也只能通过编辑冲突文件之后提交的方式
 
 Git用<<<<<<<，=======，>>>>>>>标记出不同分支的内容
@@ -218,7 +218,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 git log --graph --pretty=oneline --abbrev-commit
 ```
 
-#### 暂存代码 stash
+## 暂存代码 stash
 
 
 ```
@@ -254,29 +254,29 @@ git stash pop 恢复的同时删除stash内容
 git stash apply stash@{0}
 ```
 
-#### 丢弃一个没有被合并过的分支,注意是大写的D参数，合并过的分支删除用的是d参数，注意大小写区别，慎用D
+## 丢弃一个没有被合并过的分支,注意是大写的D参数，合并过的分支删除用的是d参数，注意大小写区别，慎用D
 
 ```
 git branch -D <name>
 ```
-#### 查看远程库信息
+## 查看远程库信息
 
 ```
 git remote -v
 ```
-#### 在本地创建和远程分支对应的分支，本地和远程分支的名称最好一致
+## 在本地创建和远程分支对应的分支，本地和远程分支的名称最好一致
 
 ```
 git checkout -b branch-name origin/branch-name
 ```
-#### 建立本地分支和远程分支的关联
+## 建立本地分支和远程分支的关联
 
 ```
 #貌似已失效了，建议用带to的，注意两个命令本地和远程分支顺序的区别
 git branch --set-upstream branch-name origin/branch-name
 git branch --set-upstream-to=origin/branch-name branch-name
 ```
-#### 标签相关
+## 标签相关
 git的标签对应的是一个版本号
 
 ```
@@ -302,7 +302,7 @@ git push origin :refs/tags/v1.0
 
 ```
 
-#### 服务端相关
+## 服务端相关
 添加信任需确认家目录下.ssh目录是700权限
 
 创建远程仓库
@@ -315,7 +315,7 @@ git init --bare sample.git
 
 
 
-#### git本地关联远程项目
+## git本地关联远程项目
 
 1.     选择目录
           进入本地需要关联的目录（比如demo目录），然后git init
@@ -336,7 +336,7 @@ git init --bare sample.git
 　　 window本地公共秘钥地址：C:\Users\Administrator\.ssh\id_rsa.pub
 　　 linux本地公共秘钥地址：~/.ssh/
 
-#### 配置用户名和邮箱
+## 配置用户名和邮箱
 
 ```
 //global为全局的，local为当前项目的,system为当前系统用户的，local必须在git目录下执行
@@ -346,7 +346,7 @@ git config --global user.email "youeamil@email.com"
 git config -l
 ```
 
-#### 修改关联的远程仓库地址
+## 修改关联的远程仓库地址
 方法有三种
 
 
@@ -371,19 +371,19 @@ git remote add origin [url]
 
 修改完成后需要push本地所有分支到远程
 
-#### 更新分支列表
+## 更新分支列表
 
 ```shell
 git remote update origin --prune
 ```
 
-#### git status中文8进制显示解决办法
+## git status中文8进制显示解决办法
 
 ```shell
 git config --global core.quotepath false
 ```
 
-#### linux 升级git版本
+## linux 升级git版本
 
 ```shell
 yum -y remove git

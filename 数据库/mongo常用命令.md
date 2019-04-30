@@ -1,64 +1,72 @@
-### 连接mongo
+## 连接mongo
 `mongo ip:port`
 
-### 显示数据库
+## 显示数据库
 `show dbs;`
 
-### 使用数据库
+## 使用数据库
 `use dbName;`
 
-### 显示表
+## 显示表
 `show tables;`
 
-### 查询数据
-#### 查表里所有数据
+## 查询数据
+### 查表里所有数据
 `db.tableName.find(); //默认查20条`
 
-#### 查指定字段
+### 查指定字段
 `db.tableName.find({"columnName":"value"});`
 
-#### 查大于
-`db.tableName.find({"columnName" : {$gt: 22}}); //$gt表示>，lt表示<，gte表示>=，lte表示<=，ne表示!=`
+### 查大于
 
-#### 字段去重
+```shell
+#$gt表示>，lt表示<，gte表示>=，lte表示<=，ne表示!=
+db.tableName.find({"columnName" : {$gt: 22}}); 
+```
+
+### 字段去重
+
 `db.tableName.distinct("columnName")；`
 
-#### 只查指定列数据
+### 只查指定列数据
+
 `db.tableName.find({},{"columnName":1});//注意参数里是两个json，第一个json是条件，第二个json是显示字段`
 
-#### 排序
+### 排序
+
 `db.tableName.find().sort({"columnName":1});//1为升序，-1为降序`
 
-#### 查指定条数
+### 查指定条数
+
 `db.tableName.find().limit(5);//查前五条`
 
-#### or
+### or
 `db.tableName.find({$or:[{"columnName":"value"},{"cloumnName2":"value2"}]});//注意or条件是json数组`
 
-#### 查一条
+### 查一条
 会格式化显示
 `json：db.tableName.findOne();`
 
-#### 查条数
+### 查条数
 `db.tableName.find({age: {$gte: 25}}).count();// = select count(*) from tableName where age >= 25;`
 
-#### 聚合查询
+### 聚合查询
 
-##### sum 
+#### sum 
 
 ```shell
 #select sum(tolStore ) from tableName,_id为group by的字段，没有为null
 db.tableName.aggregate([{$group:{_id:null,total:{$sum:"$tolStore"}}}])；
 ```
 
-##### group
+#### group
 
 ```shell
 #match为where条件
 db.rptDailyDishSale.aggregate([{$match:{'storeId':'cbe34014-cfd3-477b-9344-6c1c951bc8ca','bussDate':'2016-11-08'}},{$group:{_id:'$dishName'}}])
 ```
 
-##### sum和group组合使用 
+#### sum和group组合使用 
      
 ```shell
 #分组完之后查总记录条数，如果查每个记录的条数的话就在第一个group的json里加sum
@@ -68,11 +76,11 @@ db.rptDailyDishSale.aggregate([{$match:{'storeId':'cbe34014-cfd3-477b-9344-6c1c9
 db.rptDailyBussStat.aggregate([{ $match:{'bussDate':'2016-09-11'}},{$group: { _id:null,transTime:{ $sum:'$transTime'}}}])
 ```
 
-#### 是否存在指定字段的数据
+### 是否存在指定字段的数据
 `db.accBillMongo.find({'payList':{$exists:true}})` 
 注意exists表达式不能带引号，否则就是查字段值等于表达式字符串的数据了
      
-#### 模糊查询 
+### 模糊查询 
 
 ```shell
 #like ‘A%' 冒号后面不带引号
@@ -81,7 +89,7 @@ db.UserInfo.find({'userName':/^A/})
 db.UserInfo.find({'userName':/A/})   
 ```
      
-#### 查最大最小值 
+### 查最大最小值 
 
 结合sort和limit(1)
 ```shell
@@ -89,19 +97,19 @@ db.UserInfo.find({'userName':/A/})
 db.rptDailyPrefStat.find().sort({'bussDate':-1}).limit(1)
 ```
 
-#### 去重
+### 去重
 
 `db.dimStore.distinct('tenantId’)`
 
-##### 去重后计算条数
+#### 去重后计算条数
 
 `db.dimStore.distinct('tenantId').length`
 
-##### 带条件去重
+#### 带条件去重
 
 `db.runCommand({"distinct":”表名","key":”去重字段","query":{"time":/^2011-12-15/}}).values.length`
 
-### 更新数据
+## 更新数据
 
 `db.collection.update( criteria, objNew, upsert, multi );`
 * criteria : update的查询条件，类似sql update查询内where后面的
@@ -126,7 +134,7 @@ db.test0.update( { "count" : { $gt : 15 } } , { $inc : { "count" : 1} },false,tr
 db.test0.update( { "count" : { $gt : 10 } } , { $inc : { "count" : 1} },false,false );
 ```
 
-### 删除数据
+## 删除数据
         
 ```shell
 #清表
@@ -135,7 +143,7 @@ db.tableName.drop();
 db.tableName .remove({"columnName ": "value"});
 ```
 
-### 备份数据
+## 备份数据
 
 `mongodump -d test -o data/backup`
 
@@ -148,7 +156,7 @@ db.tableName .remove({"columnName ": "value"});
 * -o:指明到要导出的文件名
 * -q:指明导出数据的过滤条件
 
-### 还原数据
+## 还原数据
 
 `mongorestore -d test --drop data/backup/test/`
 
@@ -161,13 +169,13 @@ db.tableName .remove({"columnName ": "value"});
 * -o:指明到要备份的文件名
 * -q:指明备份数据的过滤条件
 
-### 导出指定表数据
+## 导出指定表数据
 
 ```shelll
 mongoexport -h 192.168.49.96:40001 -u cloud_rpt -p cloud_rpt -d cloud_rpt -c accBillMongo -o ~/bill.json --type json
 ```
 
-### 启动服务
+## 启动服务
 `mongod -f /yazuo/data/mongodb/mongo.conf`  
 
 -f为使用配置文件，mongo.conf为配置文件，不使用配置文件的话可以使用各个启动参数
@@ -183,11 +191,11 @@ fork=true
 journal=true
 ```
 
-###当前数据库连接数查询
+##当前数据库连接数查询
 
 `db.serverStatus().connections`
      
-### Spring mongoTemplate常用方法
+## Spring mongoTemplate常用方法
 
 ```java
 //分组查询条数,如果查所有的条数则group字段随便传一个不存在的，如group(“1")
