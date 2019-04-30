@@ -399,3 +399,10 @@ make prefix=/usr/local/git install
 
 ln -s /usr/local/git/bin/git /usr/bin/git
 ```
+
+## 文件名大小写 git mv
+git默认对文件名大小写不敏感，所以如果只是把文件名大小写变更了，会导致无法将新文件推送到远程仓库，解决办法：
+1. git mv oldName newName
+    推荐方案
+2. git config core.ignorecase false
+    不推荐，此方案虽然修改文件名大小写时会有git提示，但是只是会推送新文件，而旧文件在远程仓库上并不会被删除
