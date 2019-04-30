@@ -11,7 +11,9 @@
 
 [spring](java/spring知识点.md)
 
-[spring boot spring cloud](java/springcloud.md)
+[spring boot](java/springBoot.md)
+
+[spring cloud](java/springCloud.md)
 
 ## 大数据
 
