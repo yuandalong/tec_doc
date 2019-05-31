@@ -1,10 +1,88 @@
-### 1.索引无法存储null值
+# 表结构操作语句
+## 修改表名 
+```sql
+alter table test_a rename to sys_app;
+``` 
+
+## 修改表注释   
+```sql
+alter table sys_application comment '系统信息表';
+
+``` 
+
+## 修改字段类型和注释
+```sql
+alter table sys_application  modify column app_name varchar(20) COMMENT '应用的名称';
+``` 
+
+## 修改字段类型
+```sql
+alter table sys_application  modify column app_name text;
+``` 
+
+## 单独修改字段注释 
+```sql
+目前没发现有单独修改字段注释的命令语句。
+``` 
+
+## 设置字段允许为空
+```sql
+alter table sys_application  modify column description varchar(255) null COMMENT '应用描述';
+``` 
+
+## 增加一个字段，设好数据类型，且不为空，添加注释
+```sql
+alter table sys_application add url varchar(255) not null comment '应用访问地址';  
+``` 
+
+## 增加一个字段，设好数据类型，不为空，且有默认值，添加注释
+```sql
+ALTER TABLE cms_article add hot_value SMALLINT(3) not null DEFAULT 0 comment '热度值'
+```
+
+## 增加主键 
+```sql
+alter table t_app add aid int(5) not null ,add primary key (aid);  
+``` 
+
+## 增加自增主键
+```sql
+alter table t_app add aid int(5) not null auto_increment ,add primary key (aid); 
+``` 
+
+## 修改为自增主键
+```sql
+alter table t_app  modify column aid int(5) auto_increment ;
+``` 
+
+## 修改字段名字(要重新指定该字段的类型)
+```sql
+alter table t_app change name app_name varchar(20) not null;
+``` 
+
+## 删除字段
+```sql
+alter table t_app drop aid; 
+``` 
+
+## 在某个字段后增加字段
+```sql
+alter table `t_app` add column gateway_id int  not null default 0 AFTER `aid`； #(在哪个字段后面添加)  
+``` 
+
+## 调整字段顺序 
+```sql
+alter table t_app  change gateway_id gateway_id int not null after aid ; #(注意gateway_id出现了2次)
+```
+
+# 索引无效的情况
+## 1.索引无法存储null值
 
 a.单列索引无法储null值，复合索引无法储全为null的值。
 
 b.查询时，采用is null条件时，不能利用到索引，只能全表扫描。
 
-#### 为什么索引列无法存储Null值？
+### 为什么索引列无法存储Null值？
 
 a.索引是有序的。NULL值进入索引时，无法确定其应该放在哪里。（将索引列值进行建树，其中必然涉及到诸多的比较操作，null 值是不确定值无法
 
@@ -16,7 +94,7 @@ create index ind_a on table(col1,1);  通过在复合索引中指定一个非空
 
 
 
-### 2.不适合键值较少的列（重复数据较多的列）
+## 2.不适合键值较少的列（重复数据较多的列）
 
 假如索引列TYPE有5个键值，如果有1万条数据，那么 WHERE TYPE = 1将访问表中的2000个数据块。
 
@@ -26,7 +104,7 @@ create index ind_a on table(col1,1);  通过在复合索引中指定一个非空
 
 少一些，肯定就不会利用索引了。
 
-### 3.前导模糊查询不能利用索引(like '%XX'或者like '%XX%')
+## 3.前导模糊查询不能利用索引(like '%XX'或者like '%XX%')
 
 假如有这样一列code的值为'AAA','AAB','BAA','BAB' ,如果where code like '%AB'条件，由于前面是
 
@@ -36,7 +114,7 @@ create index ind_a on table(col1,1);  通过在复合索引中指定一个非空
 
 数据时，就可以停止查找了，因为后面的数据一定不满足要求。这样就可以利用索引了。
 
-### 4.索引失效的几种情况
+## 4.索引失效的几种情况
 
 1. 如果条件中有or，即使其中有条件带索引也不会使用(这也是为什么尽量少用or的原因)
 要想使用or，又想让索引生效，只能将or条件中的**每个列都加上索引**
@@ -49,7 +127,7 @@ create index ind_a on table(col1,1);  通过在复合索引中指定一个非空
 
 5. 如果mysql估计使用全表扫描要比使用索引快,则不使用索引
 
-### 5.MySQL主要提供2种方式的索引：B-Tree索引，Hash索引
+## 5.MySQL主要提供2种方式的索引：B-Tree索引，Hash索引
 
 B树索引具有范围查找和前缀查找的能力，对于有N节点的B树，检索一条记录的复杂度为O(LogN)。相当于二分查找。
 
@@ -59,7 +137,7 @@ B树索引具有范围查找和前缀查找的能力，对于有N节点的B树�
 
 如果值的差异性相对较差，并且以范围查找为主，B树是更好的选择，它支持范围查找。
 
-### 例子
+## 例子
 基于MySQL5.5.33
 
 ![20180319160028468](media/20180319160028468.png)
