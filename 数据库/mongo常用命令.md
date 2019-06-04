@@ -11,6 +11,8 @@
 
 # 显示表
 `show tables;`
+或者
+`show collections;`
 
 # 插入数据
 `db.tableName.save({"a":"b"})`
@@ -57,21 +59,21 @@ db.tableName.find({"columnName" : {$gt: 22}});
 
 ## 聚合查询
 
-## sum 
+### sum 
 
 ```shell
 #select sum(tolStore ) from tableName,_id为group by的字段，没有为null
 db.tableName.aggregate([{$group:{_id:null,total:{$sum:"$tolStore"}}}])；
 ```
 
-## group
+### group
 
 ```shell
 #match为where条件
 db.rptDailyDishSale.aggregate([{$match:{'storeId':'cbe34014-cfd3-477b-9344-6c1c951bc8ca','bussDate':'2016-11-08'}},{$group:{_id:'$dishName'}}])
 ```
 
-## sum和group组合使用 
+### sum和group组合使用 
      
 ```shell
 #分组完之后查总记录条数，如果查每个记录的条数的话就在第一个group的json里加sum
@@ -211,6 +213,17 @@ fork=true
 journal=true
 ```
 
+## 启用权限认证
+`mongod -f /yazuo/data/mongodb/mongo.conf --auth`
+
+单机模式只需要启动时加auth就可以
+副本集模式需要配置keyFile，**且keyFile文件的权限必须是600**
+
+生成keyFile
+`openssl rand -base64 100 > /mongodb/scheme2/keyfile0`
+
+[安全认证参考文档](https://www.cnblogs.com/silentjesse/p/4676440.html)
+
 # 停止服务
 方法一：查看进程，使用kill命令；**不能使用kill -9**
 方法二：在客户端进去，使用shutdown命令
@@ -225,10 +238,120 @@ server should be down...
 在主节点（primary）上运行shutdown命令时，服务器在关闭之前，会先等待备份节点追赶主节点以保持同步。这将回滚的可能性降至最低，但**shutdown操作有失败的可能性**。如几秒钟内没有备份节点成功同步，则shutdown操作失败，主节点不会停止运行。
  
 
-#当前数据库连接数查询
+# 当前数据库连接数查询
 
 `db.serverStatus().connections`
      
+# mongo安装
+
+## 参考文档
+[mongo安装](https://www.cnblogs.com/pfnie/articles/6759105.html)
+[副本集配置](https://www.cnblogs.com/cowboys/p/9264140.html)
+## 下载地址
+[https://www.mongodb.org/dl/linux](https://www.mongodb.org/dl/linux)
+
+## 安装
+下载完后直接解压就可以了
+
+## 配置文件
+
+```shell
+#数据文件
+dbpath=/home/data/mongo
+#日志
+logpath=/home/data/logs/mongo/mongodb.log
+#端口
+port=27017
+#后台模式
+fork=true
+#副本集名称
+replSet = replset
+#启用权限认证
+auth=true
+#keyfile，每个副本集服务器上都需要且内容一样
+keyFile=/usr/local/mongoDb/mongodb-linux-x86_64-3.4.6/keyFile
+```
+
+生成keyFile命令：
+`openssl rand -base64 100 > /mongodb/scheme2/keyfile0`
+**keyFile文件权限必须是600**
+
+
+## 启动
+./bin/mongod -f 配置文件路径
+
+## 副本集配置
+./mongo后执行
+
+```shell
+#副本集配置定义
+config = {
+_id : "replset",
+members : [
+{_id : 0, host : "10.50.162.128:27017"},
+{_id : 1, host : "10.50.162.87:27017"},
+{_id : 2, host : "10.50.162.177:27017"}]}
+
+#初始化副本集
+rs.initiate(config)
+
+#写测试数据
+for(var i = 0; i < 100; i++) {
+db.test.insert({order: i, name: "test" + i}) }
+
+#各个节点查看写入结果
+db.test.count()
+#报not master and slaveok=false，这是正常的，因为SECONDARY是不允许读写的，如果非要解决，方法如下：
+#注意是在SECONDARY上执行
+rs.slaveOk();
+```
+
+### 副本集状态
+* STARTUP：刚加入到复制集中，配置还未加载
+* STARTUP2：配置已加载完，初始化状态
+* RECOVERING：正在恢复，不适用读
+* ARBITER: 仲裁者
+* DOWN：节点不可到达
+* UNKNOWN：未获取其他节点状态而不知是什么状态，一般发生在只有两个成员的架构，脑裂
+* REMOVED：移除复制集
+* ROLLBACK：数据回滚，在回滚结束时，转移到RECOVERING或SECONDARY状态
+* FATAL：出错。查看日志grep “replSet FATAL”找出错原因，重新做同步
+* PRIMARY：主节点
+* SECONDARY：备份节点
+
+## 创建库
+mongo没有专门的建库语句，使用use就会创建库
+`use test`
+但是新库创建后如果不插入数据就退出了终端，新库会被删除，所以应该立刻插入一条测试数据
+`db.test.save({"a":"b"})`
+
+## 创建用户
+**在需创建用户的库下执行**
+
+```shell
+db.createUser({user: "root", pwd: "123456", roles: [{ role: "dbOwner", db: "test" }]})
+```
+
+## 创建管理员
+**在admin库下执行**
+
+```shell
+db.createUser( {user: "admin",pwd: "123456",roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]});
+```
+
+## 用户角色
+MongoDB基本的角色
+
+1.数据库用户角色：read、readWrite;
+2.数据库管理角色：dbAdmin、dbOwner、userAdmin；
+3.集群管理角色：clusterAdmin、clusterManager、clusterMonitor、hostManager；
+4.备份恢复角色：backup、restore；
+5.所有数据库角色：readAnyDatabase、readWriteAnyDatabase、userAdminAnyDatabase、dbAdminAnyDatabase
+6.超级用户角色：root  只能在admin库里使用
+//这里还有几个角色间接或直接提供了系统超级用户的访问（dbOwner 、userAdmin、userAdminAnyDatabase）
+
+   其中MongoDB默认是没有开启用户认证的，也就是说游客也拥有超级管理员的权限。userAdminAnyDatabase：有分配角色和用户的权限，但没有查写的权限
+
 # Spring mongoTemplate常用方法
 
 ```java
@@ -291,81 +414,6 @@ Criteria.where("storeName").regex(storeName)
 
 ```
 
-
-# mongo安装
-
-## 参考文档
-[mongo安装](https://www.cnblogs.com/pfnie/articles/6759105.html)
-[副本集配置](https://www.cnblogs.com/cowboys/p/9264140.html)
-## 下载地址
-[https://www.mongodb.org/dl/linux](https://www.mongodb.org/dl/linux)
-
-## 安装
-下载完后直接解压就可以了
-
-## 配置文件
-
-```shell
-#数据文件
-dbpath=/home/data/mongo
-#日志
-logpath=/home/data/logs/mongo/mongodb.log
-#端口
-port=27017
-#后台模式
-fork=true
-#副本集名称
-replSet = replset
-```
-
-## 启动
-./bin/mongod -f 配置文件路径
-
-## 副本集配置
-./mongo后执行
-
-```shell
-#副本集配置定义
-config = {
-_id : "replset",
-members : [
-{_id : 0, host : "10.50.162.128:27017"},
-{_id : 1, host : "10.50.162.87:27017"},
-{_id : 2, host : "10.50.162.177:27017"}]}
-
-#初始化副本集
-rs.initiate(config)
-
-#写测试数据
-for(var i = 0; i < 100; i++) {
-db.test.insert({order: i, name: "test" + i}) }
-
-#各个节点查看写入结果
-db.test.count()
-#报not master and slaveok=false，这是正常的，因为SECONDARY是不允许读写的，如果非要解决，方法如下：
-#注意是在SECONDARY上执行
-rs.slaveOk();
-```
-
-## 创建库
-mongo没有专门的建库语句，使用use就会创建库
-`use test`
-但是新库创建后如果不插入数据就退出了终端，新库会被删除，所以应该立刻插入一条测试数据
-`db.test.save({"a":"b"})`
-
-## 创建用户
-**在需创建用户的库下执行**
-
-```shell
-db.createUser({user: "root", pwd: "123456", roles: [{ role: "dbOwner", db: "test" }]})
-```
-
-## 创建管理员
-**在admin库下执行**
-
-```shell
-db.createUser( {user: "admin",pwd: "123456",roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]});
-```
 
 # MongoRepository用法
 MongoRepository是Spring-data-mongodb包里的mongo操作类，Spring-data-mongodb
