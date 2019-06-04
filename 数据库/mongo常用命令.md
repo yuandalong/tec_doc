@@ -363,6 +363,33 @@ MongoDB基本的角色
 
 其中MongoDB默认是没有开启用户认证的，也就是说游客也拥有超级管理员的权限。userAdminAnyDatabase：有分配角色和用户的权限，但没有查写的权限
 
+# 索引相关
+## 查看集合索引
+
+`db.col.getIndexes()`
+## 查看集合索引大小
+
+`db.col.totalIndexSize()`
+## 删除集合所有索引
+
+`db.col.dropIndexes()`
+## 删除集合指定索引
+
+`db.col.dropIndex("索引名称")`
+## 创建索引
+
+基本语法：
+`db.collection.createIndex(keys, options)`
+语法中 Key 值为你要创建的索引字段，1 为指定按升序创建索引，如果你想按降序来创建索引指定为 -1 即可
+如：
+`db.col.createIndex({"title":1})`
+createIndex() 方法中你也可以设置使用多个字段创建索引（关系型数据库中称作复合索引）。
+`db.col.createIndex({"title":1,"description":-1})`
+
+createIndex() 接收可选参数，可选参数列表如下：
+![](media/15596155042887.jpg)
+
+
 
 # Spring mongoTemplate常用方法
 
