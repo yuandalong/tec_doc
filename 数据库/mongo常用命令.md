@@ -220,7 +220,18 @@ journal=true
 副本集模式需要配置keyFile，**且keyFile文件的权限必须是600**
 
 生成keyFile
+keyFile内容长度为6到1024，且必须是base64范围里的字符
 `openssl rand -base64 100 > /mongodb/scheme2/keyfile0`
+
+注意，启用权限认证后，连mongo需要指定库、用户名和密码
+`./mongo database -u username -p password`
+或者连上后，使用db.auth认证
+
+```
+./mongo
+use db;
+db.auth("username","password");
+```
 
 [安全认证参考文档](https://www.cnblogs.com/silentjesse/p/4676440.html)
 
@@ -340,17 +351,18 @@ db.createUser( {user: "admin",pwd: "123456",roles: [ { role: "userAdminAnyDataba
 ```
 
 ## 用户角色
+
 MongoDB基本的角色
 
-1.数据库用户角色：read、readWrite;
-2.数据库管理角色：dbAdmin、dbOwner、userAdmin；
-3.集群管理角色：clusterAdmin、clusterManager、clusterMonitor、hostManager；
-4.备份恢复角色：backup、restore；
-5.所有数据库角色：readAnyDatabase、readWriteAnyDatabase、userAdminAnyDatabase、dbAdminAnyDatabase
-6.超级用户角色：root  只能在admin库里使用
-//这里还有几个角色间接或直接提供了系统超级用户的访问（dbOwner 、userAdmin、userAdminAnyDatabase）
+* 数据库用户角色：read、readWrite;
+* 数据库管理角色：dbAdmin、dbOwner、userAdmin；
+* 集群管理角色：clusterAdmin、clusterManager、clusterMonitor、hostManager；
+* 备份恢复角色：backup、restore；
+* 所有数据库角色：readAnyDatabase、readWriteAnyDatabase、userAdminAnyDatabase、dbAdminAnyDatabase
+* 超级用户角色：root  只能在admin库里使用，这里还有几个角色间接或直接提供了系统超级用户的访问（dbOwner 、userAdmin、userAdminAnyDatabase）
 
-   其中MongoDB默认是没有开启用户认证的，也就是说游客也拥有超级管理员的权限。userAdminAnyDatabase：有分配角色和用户的权限，但没有查写的权限
+其中MongoDB默认是没有开启用户认证的，也就是说游客也拥有超级管理员的权限。userAdminAnyDatabase：有分配角色和用户的权限，但没有查写的权限
+
 
 # Spring mongoTemplate常用方法
 
