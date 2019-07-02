@@ -236,3 +236,50 @@ B树索引具有范围查找和前缀查找的能力，对于有N节点的B树�
 3.遵从原则，在索引列上进行计算
 
 ![20180319165420698](media/20180319165420698.png)
+
+
+# 死锁处理
+解除正在死锁的状态有两种方法：
+
+## 方法1
+
+1. 查询是否锁表
+
+ show OPEN TABLES where In_use > 0;
+
+2. 查询进程（如果您有SUPER权限，您可以看到所有线程。否则，您只能看到您自己的线程）
+
+ show processlist
+
+3. 杀死进程id（就是上面命令的id列）
+
+ kill id
+
+
+
+## 方法2
+
+1. 查看下在锁的事务 
+
+    SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX;
+
+2. 杀死进程id（就是上面命令的trx_mysql_thread_id列）
+
+    kill 线程ID
+
+## 例子
+
+查出死锁进程：SHOW PROCESSLIST
+杀掉进程          KILL 420821;
+
+## 其它关于查看死锁的命令
+
+1. 查看当前的事务
+    SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX;
+
+2. 查看当前锁定的事务
+
+    SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS;
+
+3. 查看当前等锁的事务
+    SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS;

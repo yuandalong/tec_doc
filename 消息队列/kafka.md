@@ -61,6 +61,17 @@
 ./kafka-console-consumer --bootstrap-server localhost:9092 --topic test --from-beginning
 ```
 
+### 查看消费者列表
+
+```shell
+./kafka-consumer-groups --bootstrap-server 127.0.0.1:9092 --list
+```
+
+### 查指定group的消费者详情
+
+```shell
+./kafka-consumer-groups --bootstrap-server 127.0.0.1:9092 --group test --describe
+```
 ## 生产者
 
 ```shell

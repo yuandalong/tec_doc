@@ -65,7 +65,17 @@ Spring bean扫描路径
 定义bean
 可通过name属性定义bean的名称，@Autowired配合@Qualifier()，在Qualifier的value里设置bean的name来指定加载的bean
 
+## @Primary
+@Primary注解的意思是在拥有多个同类型的Bean时优先使用该Bean，到时候方便我们使用@Autowired注解自动注入。
+
 # @Configuration
+## @EnableAutoConfiguration
+这两个注解配合使用,EnableAutoConfiguration开启自动配置，Configuration设置配置
+加Configuration的类里使用@Bean注解自动配置Bean
+
+# @Scope
+定义bean的作用域，spring里bean默认单例。
+可通过属性加@Scope("prototype")，将其设置为多例模式
 
 # 统一异常处理注解
 spring的统一异常处理主要用到以下三个注解：

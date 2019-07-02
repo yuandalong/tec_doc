@@ -4,8 +4,17 @@
 # 批量删除
 redis-cli keys '123*' |xargs redis-cli del
 
-# 获取有序集合
+# 有序集合操作
+## 根据索引查询
 zrange key 0 -1
+
+## 根据分值查询
+zrangbyscore key 0 100
+
+## 添加
+不存在时add 存在时update
+zadd key 100 test
+100是score，test是member
 
 # 切换当前使用的库
 select 1

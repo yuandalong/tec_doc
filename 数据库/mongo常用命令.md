@@ -1,4 +1,5 @@
 [参考文档](https://www.jianshu.com/p/4ecde929b17d)
+[教程](https://www.runoob.com/mongodb/mongodb-tutorial.html)
 # 连接mongo
 `mongo ip:port`
 `mongo ip:port/dbname -u 用户名 -p 密码`
@@ -311,13 +312,20 @@ for(var i = 0; i < 100; i++) {
 db.test.insert({order: i, name: "test" + i}) }
 
 #各个节点查看写入结果
-db.test.count()
+db.test.count();
+
 #报not master and slaveok=false，这是正常的，因为SECONDARY是不允许读写的，如果非要解决，方法如下：
 #注意是在SECONDARY上执行
 rs.slaveOk();
+
 ```
 
 ### 副本集状态
+
+```
+#查看副本集状态
+rs.status();
+```
 * STARTUP：刚加入到复制集中，配置还未加载
 * STARTUP2：配置已加载完，初始化状态
 * RECOVERING：正在恢复，不适用读

@@ -346,31 +346,6 @@ git config --global user.email "youeamil@email.com"
 git config -l
 ```
 
-## 修改关联的远程仓库地址
-方法有三种
-
-
-1.修改命令
-
-
-```
-git remote set-url origin [url]
-```
-
-
-2.先删后加
-
-
-```
-git remote rm origin
-git remote add origin [url]
-```
-
-
-3.直接修改config文件
-
-修改完成后需要push本地所有分支到远程
-
 ## 更新分支列表
 
 ```shell
@@ -406,3 +381,28 @@ git默认对文件名大小写不敏感，所以如果只是把文件名大小�
     推荐方案
 2. git config core.ignorecase false
     不推荐，此方案虽然修改文件名大小写时会有git提示，但是只是会推送新文件，而旧文件在远程仓库上并不会被删除
+    
+## 修改关联的远程仓库地址
+方法有三种
+
+
+1.修改命令
+
+
+```
+git remote set-url origin [url]
+```
+
+
+2.先删后加
+
+
+```
+git remote rm origin
+git remote add origin [url]
+```
+
+
+3.直接修改config文件
+
+修改完成后需要push本地所有分支到远程
