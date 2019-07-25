@@ -26,6 +26,7 @@ find . -name '123'
 .表示当前目录
 
 ## 查当前目录大于800M的文件
+
 ```shell
  find . -type f -size +800M
 ```
@@ -37,6 +38,39 @@ find . -name '123'
 * p 管道
 * l 符号链接
 * **f 普通文件**
+
+## 查指定天数之前的文件
+
+```shell
+find ./ -mtime +5 |xargs rm -rf
+```
+-mtime 指定天数
+-mtime n : n为数字，意思为在n天之前的“一天之内”被更改过内容的文件
+-mtime +n : 列出在n天之前（不含n天本身）被更改过内容的文件名
+-mtime -n : 列出在n天之内（含n天本身）被更改过内容的文件名
+
+最近访问时间 access time （-atime）
+最近更改时间 modify time （-mtime） 
+最近状态改动时间 change time（-ctime）
+
+## 只查文件夹
+
+-type d
+d表示文件夹
+常用的还有f表示文件
+
+
+type参数
+
+| 参数 | 文件类型 |
+| --- | --- |
+| b | 块设备 |
+| d| 目录 | 
+| c| 字符设备 | 
+| p| 管道 | 
+| l | 符号链接 | 
+| f | 普通文件 | 
+
 
 # scp
 ```shell

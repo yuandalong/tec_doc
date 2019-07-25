@@ -160,6 +160,9 @@ git push origin dbg_lichen_star:dbg_lichen_star
 git branch --set-upstream-to=origin/dbg_lichen_star dbg_lichen_star
 ```
 
+## 创建和父分支没关系的分支 --orphan
+`git checkout --orphan 分支名`
+
 ## 查看当前分支
 会列出所有分支，当前分支会在前面加*
 

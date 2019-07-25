@@ -139,7 +139,7 @@
 0.9之前的版本offset信息保存在zookeeper当中
 
 ```shell
-/kafka-consumer-groups.sh --zookeeper z1:2181,z2:2181,z3:2181 --group test-consumer-group --topic test --execute --reset-offsets --to-offset 10000
+./kafka-consumer-groups.sh --zookeeper z1:2181,z2:2181,z3:2181 --group test-consumer-group --topic test --execute --reset-offsets --to-offset 10000
 # --zookeeper 和 --bootstrap-server 只能选一种方式
 ```
 
