@@ -21,8 +21,26 @@
 ## @PostMapping
 设置post请求的路径，只允许post方式访问
 
+# @RequestParam
+GET和POST请求传的参数会自动转换赋值到@RequestParam 所注解的变量上
+
+用来处理Content-Type: 为 application/x-www-form-urlencoded编码的内容。（Http协议中，如果不指定Content-Type，则默认传递的参数就是application/x-www-form-urlencoded类型）
+
+在Content-Type: application/x-www-form-urlencoded的请求中， 
+get 方式中queryString的值，和post方式中 body data的值都会被Servlet接受到并转化到Request.getParameter()参数集中，所以@RequestParam可以获取的到。
+
 # @RequestBody
 是作用在形参列表上，用于将前台发送过来固定格式的数据【xml 格式或者 json等】封装为对应的 JavaBean 对象，封装时使用到的一个对象是系统默认配置的 HttpMessageConverter进行解析，然后封装到形参上。
+
+一般用来处理非Content-Type: application/x-www-form-urlencoded编码格式的数据。
+
+GET请求中，因为没有HttpEntity，所以@RequestBody并不适用。
+POST请求中，通过HttpEntity传递的参数，必须要在请求头中声明数据的类型Content-Type，SpringMVC通过使用HandlerAdapter 配置的HttpMessageConverters来解析HttpEntity中的数据，然后绑定到相应的bean上。
+
+# @RequestParam和@RequestBody的区别
+* 在GET请求中，不能使用@RequestBody。
+* 在POST请求，可以使用@RequestBody和@RequestParam，但是如果使用@RequestBody，对于参数转化的配置必须统一。
+[参考文章](https://blog.csdn.net/xinluke/article/details/52710706)
 
 # @ResponseBody
 表示该方法的返回结果直接写入 HTTP response body 中，而不是返回静态页或者jsp

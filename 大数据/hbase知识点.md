@@ -1,17 +1,5 @@
-### Hbase行键列族的概念，物理模型，表的设计原则？
-
-行键：rowkey，是hbase表自带的，每个行键对应一条数据。
-
-列族：是创建表时指定的，为列的集合，**每个列族作为一个文件单独存储**，存储的数据都是字节数组，其中数据可以有很多，通过时间戳来区分。
-
-物理模型：整个hbase表会拆分成多个region，每个region记录着行键的起始点保存在不同的节点上，查询时就是对各个节点的并行查询，当region很大时使用.META表存储各个region的起始点，-ROOT又可以存储.META的起始点。
-
-Rowkey的设计原则：各个列族数据平衡，长度原则、相邻原则，创建表的时候设置表放入regionserver缓存中，避免自动增长和时间，使用字节数组代替string，最大长度64kb，最好16字节以内，按天分表，两个字节散列，四个字节存储时分毫秒。
-
-列族的设计原则：尽可能少(按照列族进行存储，按照region进行读取，不必要的io操作)，经常和不经常使用的两类数据放入不同列族中，列族名字尽可能短。
-
----
-### hadoop集群中需要启动 哪些进程，他们的作用
+# 面试题
+## hadoop集群中需要启动 哪些进程，他们的作用
 * namenode：负责管理hdfs中文件块的元数据，响应客户端请求，管理datanode上文件block的均衡，维持副本数量
 * Secondname:主要负责做checkpoint操作；也可以做冷备，对一定范围内数据做快照性备份。
 * Datanode:存储数据块，负责客户端对数据块的io请求
@@ -20,14 +8,14 @@ Rowkey的设计原则：各个列族数据平衡，长度原则、相邻原则�
 * 还有Resourcemanager、Nodemanager、Journalnode、Zookeeper、Zkfc
 
 ---
-### HBase简单读写流程
-####  读
+## HBase简单读写流程
+###  读
 找到要读数据的region所在的RegionServer，然后按照以下顺序进行读取：先去BlockCache读取，若BlockCache没有，则到Memstore读取，若Memstore中没有，则到HFile中去读。
-####  写
+###  写
 找到要写数据的region所在的RegionServer，然后先将数据写到WAL(Write-Ahead Logging，预写日志系统)中，然后再将数据写到Memstore等待刷新，回复客户端写入完成。
 
 ---
-### HBase的特点是什么
+## HBase的特点是什么
 
 1. hbase是一个分布式的基于列式存储的数据库，基于hadoop的HDFS存储，zookeeper进行管理。
 2. hbase适合存储半结构化或非结构化数据，例如数据结构字段不够确定或者杂乱无章很难按一个概念去抽取的数据。
@@ -36,12 +24,12 @@ Rowkey的设计原则：各个列族数据平衡，长度原则、相邻原则�
 5. hbase是主从结构。Hmaster作为主节点，hRegionServer作为从节点。
 
 ---
-### Hbase中region太小和region太大带来的结果
+## Hbase中region太小和region太大带来的结果
 
 Region过大会发生多次compaction，将数据读一遍并写一遍到hdfs上，占用io，region过小会造成多次split，region会下线，影响访问服务，调整hbase.heregion.max.filesize为256m。
 
 ---
-### 每天百亿数据存入HBase，如何保证数据的存储正确和在规定的时间里全部录入完毕，不残留数据
+## 每天百亿数据存入HBase，如何保证数据的存储正确和在规定的时间里全部录入完毕，不残留数据
 答：看到这个题目的时候我们要思考的是它在考查什么知识点？
 我们来看看要求：
 1. 百亿数据：证明数据量非常大
@@ -56,11 +44,11 @@ Region过大会发生多次compaction，将数据读一遍并写一遍到hdfs上
 4. 在规定时间内完成也就是存入速度不能过慢，并且当然是越快越好，使用BulkLoad
 
 ---
-### HBase 如何给WEB前端提供接口来访问？
+## HBase 如何给WEB前端提供接口来访问？
 答：使用JavaAPI来编写WEB应用；使用HBase提供的RESTful接口
 
 ---
-### HBase优化方法
+## HBase优化方法
 优化手段主要有以下四个方面
 1. 减少调整
 减少调整这个如何理解呢？HBase中有几个内容会动态调整，如region（分区）、HFile，所以通过一些方法来减少这些会带来I/O开销的调整
@@ -111,8 +99,8 @@ Region过大会发生多次compaction，将数据读一遍并写一遍到hdfs上
 ---
 
 
-### HBase中RowFilter和BloomFilter原理
-####  RowFilter原理简析
+## HBase中RowFilter和BloomFilter原理
+###  RowFilter原理简析
 RowFilter顾名思义就是对rowkey进行过滤，那么rowkey的过滤无非就是相等（EQUAL）、大于(GREATER)、小于(LESS)，大于等于(GREATER_OR_EQUAL)，小于等于(LESS_OR_EQUAL)和不等于(NOT_EQUAL)几种过滤方式。Hbase中的RowFilter采用比较符结合比较器的方式来进行过滤。
 
 比较器的类型如下：
@@ -132,23 +120,23 @@ scan.setFilter(rowFilter)
 
 ```
 在上面例子中，比较符为EQUAL，比较器为BinaryComparator
-####  BloomFilter（布隆过滤器）原理简析
+###  BloomFilter（布隆过滤器）原理简析
 
 * 主要功能：提供**随机读**的性能
 * 存储开销：BloomFilter是列族级别的配置，一旦表格中开启BloomFilter，那么在生成StoreFile时同时会生成一份包含BloomFilter结构的文件MetaBlock，所以会增加一定的存储开销和内存开销
 * 粒度控制：ROW和ROWCOL
 * 设置：在**建表时**对某一列设置BloomFilter即可
 
-####  #BloomFilter的原理
+###  #BloomFilter的原理
 内部是一个bit数组，初始值均为0
 插入元素时对元素进行hash并且映射到数组中的某一个index，将其置为1，再进行多次不同的hash算法，将映射到的index置为1，同一个index只需要置1次。
 查询时使用跟插入时相同的hash算法，如果在对应的index的值都为1，那么就可以认为该元素**可能**存在，注意，只是可能存在
 所以BlomFilter**只能保证过滤掉不包含的元素，而不能保证包含**
 
 ---
-### HBase的导入导出方式
+## HBase的导入导出方式
 
-####  导入
+###  导入
 
 ```shell
 bin/hbase org.apache.hadoop.hbase.mapreduce.Driver import 表名 路径
@@ -158,7 +146,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver import 表名 路径
 | --- | --- |
 |本地路径|file:///path|
 |HDFS|hdfs://cluster1/path|
-####  导出
+###  导出
 ```shell
 bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
 ```
@@ -168,7 +156,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
 |HDFS|hdfs://cluster1/path|
 ---
 
-### Region如何预建分区
+## Region如何预建分区
 预建分区的方法很简单，有以下两种
 - hbase shell
 
@@ -198,7 +186,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
 1. 如何分：就是生成一个byte[ ][ ]，用于创建表格，参考上面的java代码
 ---
 
-### HRegionServer宕机如何处理？
+## HRegionServer宕机如何处理？
 1. ZooKeeper会监控HRegionServer的上下线情况，当ZK发现某个HRegionServer宕机之后会通知HMaster进行失效备援；
 2. 该HRegionServer会停止对外提供服务，就是它所负责的region暂时停止对外提供服务
 3. HMaster会将该HRegionServer所负责的region转移到其他HRegionServer上，并且会对HRegionServer上存在memstore中还未持久化到磁盘中的数据进行恢复
@@ -208,20 +196,20 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
     * 当region被分配到新的RegionServer中，RegionServer读取region时会判断是否存在recover.edits，如果有则进行恢复
 ---
 
-### HBase简单读写流程
-####  读
+## HBase简单读写流程
+###  读
 找到要读取数据的region所在的RegionServer，然后按照以下顺序进行读取：先去BlockCache读取，若BlockCache没有，则到Memstore读取，若MemStore中没有，则到HFile中读取。
-####  写
+###  写
 找到要写入数据的region所在的RegionServer，然后将数据**先写到WAL**中，然后**再将数据写到MemStore**等待刷新，回复客户端写入完成。
 
 ---
-### HBase和Hive的区别
+## HBase和Hive的区别
 Hive和Hbase是两种基于Hadoop的不同技术。
 * Hive是一种类SQL 的引擎，并且运行MapReduce 任务。
 * Hbase 是一种在Hadoop之上的NoSQL的Key/value数据库。
 
 当然，这两种工具是可以同时使用的。就像用Google来搜索，用FaceBook进行社交一样，Hive可以用来进行统计查询，HBase可以用来进行实时查询，数据也可以从Hive写到Hbase，设置再从Hbase写回Hive。
-####  Hive概述
+###  Hive概述
 Hive是一个构建在Hadoop基础之上的数据仓库。通过Hive可以使用HQL语言查询存放在HDFS上的数据。
 HQL是一种类SQL语言，这种语言最终被转化为Map/Reduce. 虽然Hive提供了SQL查询功能，但是Hive不能够进行交互查询，因为它只能够在Haoop上批量的执行Hadoop。
 Hive被分区为表格，表格又被进一步分割为列簇。列簇必须使用schema 定义，列簇将某一类型列集合起来（列不要求schema定义）。
@@ -234,7 +222,7 @@ Hive被分区为表格，表格又被进一步分割为列簇。列簇必须使�
     - Hive适合用来对一段时间内的数据进行分析查询，例如，用来计算趋势或者网站的日志。
     - Hive不应该用来进行实时的查询。因为它需要很长时间才可以返回结果。
     
-####  Hbase概述
+###  Hbase概述
 HBase通过存储key/value来工作，它运行在HDFS之上。它支持四种主要的操作：增加或者更新行，查看一个范围内的cell，获取指定的行，删除指定的行、列或者是列的版本。版本信息用来获取历史数据（每一行的历史数据可以被删除，然后通过Hbase compactions就可以释放出空间）。虽然HBase包括表格，但是schema仅仅被表格和列簇所要求，列不需要schema。Hbase的表格包括增加/计数功能。和Hive不一样，Hbase能够在它的数据库上**实时**运行，而不是运行MapReduce任务。
 - 限制
     - HBase查询是通过特定的语言来编写的，这种语言需要重新学习。
@@ -244,7 +232,7 @@ HBase通过存储key/value来工作，它运行在HDFS之上。它支持四种�
 - 应用场景
 Hbase非常适合用来进行大数据的实时查询。Facebook用Hbase进行消息和实时的分析。它也可以用来统计Facebook的连接数。
 
-####  主要区别
+###  主要区别
 
 ||HBase|Hive|
 | --- | --- | --- |
@@ -256,26 +244,26 @@ Hbase非常适合用来进行大数据的实时查询。Facebook用Hbase进行�
 |特点|以K-V形式存储|类SQL
 
 ---
-### HBase首次读写流程
+## HBase首次读写流程
 
 1. Client从ZooKeeper中读取hbase:meta表
 2. Client从hbase:meta中获取想要操作的region的位置信息，并且将hbase:meta缓存在Client端，用于后续的操作
 3. 当一个RegionServer宕机而执行重定位之后，Client需要重新获取新的hase:meta信息进行缓存
 
 ---
-### HBase搭建过程中需要注意什么？
-####  hbase-env.sh的配置
+## HBase搭建过程中需要注意什么？
+###  hbase-env.sh的配置
 是否使用外部ZooKeeper，这个一般使用Hadoop集群的ZooKeeper集群即可。
 > HBASE_MANAGES_ZK=false
 
-####  hbase-site.sh的配置
+###  hbase-site.sh的配置
 
 > hbase.zookeeper.quorum="host1:2181,host2:2181"
 
 ---
-### Hbase的rowKey的设计原则
+## Hbase的rowKey的设计原则
 
-####  Rowkey长度原则
+###  Rowkey长度原则
 Rowkey是一个二进制码流，Rowkey的长度被很多开发者建议说设计在10~100 个字节，
 不过建议是越短越好，不要超过16 个字节。
 原因如下：
@@ -283,15 +271,15 @@ Rowkey是一个二进制码流，Rowkey的长度被很多开发者建议说设�
 2. MemStore 将缓存部分数据到内存，如果Rowkey 字段过长内存的有效利用率会降低，系统将无法缓存更多的数据，这会降低检索效率。因此Rowkey 的字节长度越短越好。
 3. 目前操作系统是都是64 位系统，内存8 字节对齐。控制在16 个字节，**8 字节的整数倍**利用操作系统的最佳特性。
 
-####  Rowkey散列原则
+###  Rowkey散列原则
 如果Rowkey 是按时间戳的方式递增，**不要将时间放在rowkey 的前面**，建议将Rowkey
 的高位作为散列字段，由程序循环生成，低位放时间字段，这样将提高数据均衡分布在每个Regionserver 实现负载均衡的几率。如果没有散列字段，首字段直接是时间信息将产生所有新数据都在一个RegionServer 上堆积的热点现象，这样在做数据检索的时候负载将会集中在个别RegionServer，降低查询效率。
 
-####  Rowkey唯一原则
+###  Rowkey唯一原则
 必须在设计上保证其唯一性。
 
 ---
-### Hbase中scan和get的功能以及实现的异同
+## Hbase中scan和get的功能以及实现的异同
 HBase的查询实现只提供两种方式：
 1. 按指定RowKey 获取唯一一条记录，get方法（org.apache.hadoop.hbase.client.Get）
 Get 的方法处理分两种 : 设置了ClosestRowBefore 和没有设置的rowlock。主要是用来保证行的事务性，即每个get 是以一个row 来标记的。一个row中可以有很多family 和column。
@@ -301,7 +289,7 @@ Get 的方法处理分两种 : 设置了ClosestRowBefore 和没有设置的rowlo
     4. scan 可以通过setFilter 方法添加过滤器，这也是分页、多条件查询的基础。
 
 ---
-### Hbase中scan对象的setCache和setBatch 方法的使用
+## Hbase中scan对象的setCache和setBatch 方法的使用
 
 
 setCaching设置的值为每次rpc的请求记录数，默认是1；cache大可以优化性能，但是太大了会花费很长的时间进行一次传输。
@@ -332,14 +320,14 @@ batch和caching和hbase table column size共同决意了rpc的次数。
 小的批量值使服务器端把3个列装入一个Result实例，同时扫描器缓存为6，使每个RPC请求传输6行，即6个被批量封装的Result实例。如果没有指定批量大小，而是指定了扫描器缓存，那么一个调用结果就能包含所有的行，因为每一行都包含在一个Result实例中。只有当用户使用批量模式后，行内(intra-row)扫描功能才会启用。
 
 ---
-### Hbase中Cell 的结构
+## Hbase中Cell 的结构
 
 HBase 中通过row 和columns 确定的为一个存贮单元称为cell。
 Cell是由`{row key, column(= <family> + <label>), version}`唯一确定的单元。cell 中的数
 据是没有类型的，全部是字节码形式存储。
 
 ---
-### 以 start-hbase.sh 为起点，Hbase 启动的流程 
+## 以 start-hbase.sh 为起点，Hbase 启动的流程 
 start-hbase.sh 的流程如下：
 1. 运行 hbase-config.sh
 hbase-config.sh的作用：
@@ -362,7 +350,7 @@ hbase-config.sh的作用：
 通过 backup-masters 这个配置文件，获取 backup-masters 机器列表,然后 SSH 向这些机器发送远程命令。
 
 ---
-### 简述 HBASE中compact用途是什么，什么时候触发，分为哪两种,有什么区别，有哪些相关配置参数？
+## 简述 HBASE中compact用途是什么，什么时候触发，分为哪两种,有什么区别，有哪些相关配置参数？
 
 在hbase中每当有memstore数据flush到磁盘之后，就形成一个storefile，当storeFile的数量达到一定程度后，就需要将 storefile 文件来进行 compaction 操作。
 Compact 的作用：

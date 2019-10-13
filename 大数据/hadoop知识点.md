@@ -1,24 +1,25 @@
-### hadoop的shuffle过程
-#### Map端的shuffle
+# 面试题
+## hadoop的shuffle过程
+### Map端的shuffle
 Map端会处理输入数据并产生中间结果，这个中间结果会写到本地磁盘，而不是HDFS。每个Map的输出会先写到内存缓冲区中，当写入的数据达到设定的阈值时，系统将会启动一个线程将缓冲区的数据写到磁盘，这个过程叫做spill。
 在spill写入之前，会先进行二次排序，首先根据数据所属的partition进行排序，然后每个partition中的数据再按key来排序。partition的目是将记录划分到不同的Reducer上去，以期望能够达到负载均衡，以后的Reducer就会根据partition来读取自己对应的数据。接着运行combiner(如果设置了的话)，combiner的本质也是一个Reducer，其目的是对将要写入到磁盘上的文件先进行一次处理，这样，写入到磁盘的数据量就会减少。最后将数据写到本地磁盘产生spill文件(spill文件保存在{mapred.local.dir}指定的目录中，Map任务结束后就会被删除)。
 最后，每个Map任务可能产生多个spill文件，在每个Map任务完成前，会通过多路归并算法将这些spill文件归并成一个文件。至此，Map的shuffle过程就结束了。
 
 --
-#### Reduce端的shuffle
+### Reduce端的shuffle
 Reduce端的shuffle主要包括三个阶段，copy、sort(merge)和reduce。
 首先要将Map端产生的输出文件拷贝到Reduce端，但每个Reducer如何知道自己应该处理哪些数据呢？因为Map端进行partition的时候，实际上就相当于指定了每个Reducer要处理的数据(partition就对应了Reducer)，所以Reducer在拷贝数据的时候只需拷贝与自己对应的partition中的数据即可。每个Reducer会处理一个或者多个partition，但需要先将自己对应的partition中的数据从每个Map的输出结果中拷贝过来。
 接下来就是sort阶段，也成为merge阶段，因为这个阶段的主要工作是执行了归并排序。从Map端拷贝到Reduce端的数据都是有序的，所以很适合归并排序。最终在Reduce端生成一个较大的文件作为Reduce的输入。
 最后就是Reduce过程了，在这个过程中产生了最终的输出结果，并将其写到HDFS上。
 
 ---
-### HDFS读写数据的过程
-#### 读
+## HDFS读写数据的过程
+### 读
 1 跟namenode通信查询元数据，找到文件块所在的datanode服务器
 2 挑选一台datanode（就近原则，然后随机）服务器，请求建立socket流
 3 datanode开始发送数据（从磁盘里面读取数据放入流，以packet为单位来做校验）
 4 客户端以packet为单位接收，现在本地缓存，然后写入目标文件
-#### 写
+### 写
 1 根namenode通信请求上传文件，namenode检查目标文件是否已存在，父目录是否存在
 2 namenode返回是否可以上传
 3 client请求第一个 block该传输到哪些datanode服务器上
@@ -28,11 +29,11 @@ Reduce端的shuffle主要包括三个阶段，copy、sort(merge)和reduce。
 7 当一个block传输完成之后，client再次请求namenode上传第二个block的服务器。
 
 ---
-### hadoop生态组件
+## hadoop生态组件
 ![hadoop生态组件](media/hadoop生态组件.png)
 
 ---
-### hdfs fsimage和edit的区别
+## hdfs fsimage和edit的区别
   大家都知道namenode与secondary namenode 的关系，当他们要进行数据同步时叫做checkpoint时就用到了fsimage与edit。
 - 概念：
 fsimage保存了最新的元数据检查点。
@@ -42,26 +43,26 @@ edits保存自最新检查点后的命名空间的变化。
 这种机制有个问题：因edits存放在Namenode中，当Namenode挂掉，edits也会丢失，导致利用secondary namenode恢复Namenode时，会有部分数据丢失。
 
 ---
-### 列举hadoop几个配置文件优化？ --发挥
+## 列举hadoop几个配置文件优化？ --发挥
   1）Core-site.xml 文件的优化
     a、fs.trash.interval，默认值： 0；说明： 这个是开启hdfs文件删除自动转移到垃圾箱的选项，值为垃圾箱文件清除时间。一般开启这个会比较好，以防错误删除重要文件。单位是分钟。
     b、dfs.namenode.handler.count，默认值：10；说明：hadoop系统里启动的任务线程数，这里改为40，同样可以尝试该值大小对效率的影响变化进行最合适的值的设定。
     c、mapreduce.tasktracker.http.threads，默认值：40；说明：map和reduce是通过http进行数据传输的，这个是设置传输的并行线程数。
 
 ---
-### datanode 首次加入 cluster 的时候，如果 log 报告不兼容文件版本，那需要namenode 执行格式化操作，这样处理的原因是？
+## datanode 首次加入 cluster 的时候，如果 log 报告不兼容文件版本，那需要namenode 执行格式化操作，这样处理的原因是？
   1）这样处理是不合理的，因为那么 namenode 格式化操作，是对文件系统进行格式化，namenode 格式化时清空 dfs/name 下空两个目录下的所有文件，之后，会在目录 dfs.name.dir 下创建文件。
   2）文本不兼容，有可能时 namenode 与 datanode 的 数据里的 namespaceID、clusterID 不一致，找到两个 ID 位置，修改为一样即可解决。
 
 ---
-### MapReduce 中排序发生在哪几个阶段？这些排序是否可以避免？为什么？
+## MapReduce 中排序发生在哪几个阶段？这些排序是否可以避免？为什么？
   1）一个 MapReduce 作业由 Map 阶段和 Reduce 阶段两部分组成，这两阶段会对数据排序，从这个意义上说，MapReduce 框架本质就是一个 Distributed Sort。
   2）在 Map 阶段，Map Task 会在本地磁盘输出一个按照 key 排序（采用的是快速排序）的文件（中间可能产生多个文件，但最终会合并成一个），在 Reduce 阶段，每个 Reduce Task 会对收到的数据排序，这样，数据便按照 Key 分成了若干组，之后以组为单位交给 reduce（）处理。
   3）很多人的误解在 Map 阶段，如果不使用 Combiner便不会排序，这是错误的，不管你用不用 Combiner，Map Task 均会对产生的数据排序（如果没有 Reduce Task，则不会排序，实际上 Map 阶段的排序就是为了减轻 Reduce端排序负载）。
   4）由于这些排序是 MapReduce 自动完成的，用户无法控制，因此，在hadoop 1.x 中无法避免，也不可以关闭，但 hadoop2.x 是可以关闭的。
 
 ---
-### hadoop的优化？
+## hadoop的优化？
   1）优化的思路可以从配置文件和系统以及代码的设计思路来优化
   2）配置文件的优化：调节适当的参数，在调参数时要进行测试
   3）代码的优化：combiner的个数尽量与reduce的个数相同，数据的类型保持一致，可以减少拆包与封包的进度
@@ -107,7 +108,7 @@ tasktracker.http.threads 默认是 40，可以改成 100 根据机器的能力
 ```
 ---
 
-### hdfs写文件的步骤
+## hdfs写文件的步骤
 
 (1)client向NameNode申请上传…/xxx.txt文件
 
@@ -125,7 +126,7 @@ tasktracker.http.threads 默认是 40，可以改成 100 根据机器的能力
 ![hdfs写文件步骤](media/hdfs写文件步骤.png)
 
 ---
-### hdfs读取文件步骤
+## hdfs读取文件步骤
 
 (1)client向NN请求下载…/xxx.txt文件
 
@@ -141,7 +142,7 @@ tasktracker.http.threads 默认是 40，可以改成 100 根据机器的能力
 ![hdfs读文件步骤](media/hdfs读文件步骤.png)
 
 ---
-### 简单说一下hadoop的map-reduce模型
+## 简单说一下hadoop的map-reduce模型
 
 首先map task会从本地文件系统读取数据，转换成key-value形式的键值对集合，使用的是hadoop内置的数据类型，如Text，Longwritable等。
 
@@ -156,12 +157,12 @@ tasktracker.http.threads 默认是 40，可以改成 100 根据机器的能力
 Reduce task会用过网络将各个数据收集进行reduce处理，最后将数据保存或者显示，结束整个job。
 
 ---
-### 运行hadoop集群需要哪些守护进程？
+## 运行hadoop集群需要哪些守护进程？
 
 DataNode,NameNode,TaskTracker和JobTracker都是运行Hadoop集群需要的守护进程。
 
 ---
-### hadoop的TextInputFormat作用是什么，如何自定义实现？
+## hadoop的TextInputFormat作用是什么，如何自定义实现？
 
 InputFormat会在map操作之前对数据进行两方面的预处理。
 
@@ -172,14 +173,14 @@ InputFormat会在map操作之前对数据进行两方面的预处理。
 自定义类继承InputFormat接口，重写createRecordReader和isSplitable方法在createRecordReader中可以自定义分隔符。
 
 ---
-### 为什么要用flume导入hdfs，hdfs的架构是怎样的？
+## 为什么要用flume导入hdfs，hdfs的架构是怎样的？
 
 Flume可以实时的导入数据到hdfs中，当hdfs上的文件达到一个指定大小的时候会形成一个文件，或者超时所指定时间的话也形成一个文件。
 
 文件都是存储在datanode上的，namenode存储着datanode的元数据信息，而namenode的元数据信息是存在内存中的，所以当文件切片很小或者很多的时候会卡死。
 
 ---
-### MR程序运行的时候会有什么比较常见的问题
+## MR程序运行的时候会有什么比较常见的问题
 
 比如说作业中大部分都完成了，但是总有几个reduce一直在运行。
 
@@ -188,7 +189,7 @@ Flume可以实时的导入数据到hdfs中，当hdfs上的文件达到一个指�
 解决的方法可以在分区的时候重新定义分区规则对于value数据很多的key可以进行拆分、均匀打散等处理，或者是在map端的combiner中进行数据预处理的操作。
 
 ---
-### hdfs上传文件的流程。
+## hdfs上传文件的流程。
 
 这里描述的 是一个256M的文件上传过程
 
@@ -203,11 +204,12 @@ Flume可以实时的导入数据到hdfs中，当hdfs上的文件达到一个指�
 1. dataNode 向 Client通信 表示已经传完 数据块 同时向NameNode报告 ⑥依照上面（④到⑤）的原理将 所有的数据块都上传结束 向 NameNode 报告 表明 已经传完所有的数据块 。
 
 --- 
-### 讲述一下mapreduce的流程（shuffle的sort，partitions，group）
+
+## 讲述一下mapreduce的流程（shuffle的sort，partitions，group）
 
 首先是 Mapreduce经过SplitInput 输入分片 决定map的个数在用Record记录 key value。然后分为以下三个流程：
 
-#### Map：
+### Map：
 
 输入  key（long类型偏移量）  value（Text一行字符串）
 
@@ -227,7 +229,7 @@ Shuffle：、
 
 上面只要有完成结果，reduce就开始复制上面的结果，通过http方式
 
-#### Reduce
+### Reduce
 
   输入key时map输出时的key value是分组器分的iterable
 
@@ -236,14 +238,192 @@ Shuffle：、
   输出结果保存在hdfs上而不是本地文件中
   
 ---
-### 说一下你对hadoop生态圈的认识。
+## 说一下你对hadoop生态圈的认识。
 
 没有固定答案，主要从hdfs底层存储，hbase数据库，hive数据仓库，flume收集，Kafka缓存，zookeeper分布式协调服务，spark大数据分析，sqoop数据互转来说。
 
 ---
-### yarn的理解
+## yarn的理解
 
 YARN是Hadoop2.0版本引进的资源管理系统，直接从MR1演化而来。 
 核心思想：将MR1中的JobTracker的资源管理和作业调度两个功能分开，分别由ResourceManager和ApplicationMaster进程实现。
 
 ResourceManager：负责整个集群的资源管理和调度 ApplicationMaster：负责应用程序相关事务，比如任务调度、任务监控和容错等。 YARN的出现，使得多个计算框架可以运行在同一个集群之中。 1. 每一个应用程序对应一个ApplicationMaster。 2. 目前可以支持多种计算框架运行在YARN上面，比如MapReduce、storm、Spark、Flink。
+
+# hadoop配置
+## 单机模式
+1. 配置java环境
+2. 配置hadoop JAVA_HOME
+    修改etc/hadoop/hadoop-env.sh
+    
+    `export JAVA_HOME=/usr/java/latest`
+    
+3. 运行测试效果
+    `bin/hadoop`
+    **注意：下面的命令都是在hadoop跟目录下运行的**
+4. 运行hadoop demo
+    
+    ```shell
+    mkdir input
+    cp etc/hadoop/*.xml input
+    bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.0.jar grep input output 'dfs[a-z.]+'
+    cat output/*
+    ```
+5. 配置hdfs
+    etc/hadoop/core-site.xml:
+
+    ```xml
+    <configuration>
+        <property>
+            <name>fs.defaultFS</name>
+            <value>hdfs://localhost:9000</value>
+        </property>
+    </configuration>
+    ```
+    **注意**上面配置的hdfs域名，如果需要其他机器能访问本机的hdfs服务，需要在host里配置局域网ip，并在此处设置hdfs域名与host相对应，否则其他机器访问9000端口会被拒绝
+    通过netstat命令查看，如果9000端口的ip地址是127的话，那其他机器无法访问
+    [参考文档](https://www.cnblogs.com/duanxz/p/5142535.html)
+    
+    etc/hadoop/hdfs-site.xml:
+
+
+    ```xml
+    <configuration>
+        <property>
+            <name>dfs.replication</name>
+            <value>1</value>
+        </property>
+        <property>
+           <name>dfs.name.dir</name>
+           <value>file:///home/hadoop/hadoopinfra/hdfs/namenode</value>
+        </property>
+        <property>
+           <name>dfs.data.dir</name>
+           <value>file:///home/hadoop/hadoopinfra/hdfs/datanode</value>
+        </property>        
+    </configuration>
+    ```
+    
+1. 添加ssh信任
+    单机模式，所以要把本机添加到ssh信任列表里
+    
+    ```shell
+    ssh-keygen -t rsa
+    cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    ```
+    ssh localhost测试一下，看看是不是免密了
+    
+1. 初始化namenode
+    `bin/hdfs namenode -format`
+2. 启动hdfs
+    `sbin/start-dfs.sh`
+3. 访问9870（2.*版本是50070）查看启动情况
+    http://localhost:9870/
+4. 创建hdfs目录
+
+    ```  
+    bin/hdfs dfs -mkdir -p /user/<username>/input
+    ```
+    **username为当前用户名**
+5. 导入文件到hdfs
+    `bin/hdfs dfs -put etc/hadoop/*.xml input`
+6. 运行hadoop demo
+    
+    ```shell
+    bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.0.jar grep input output 'dfs[a-z.]+'
+    ```
+7. 查看运行结果
+    1. 先下载hdfs文件再查看
+        
+        ```
+        bin/hdfs dfs -get output output
+        cat output/*
+        ```
+    2. 直接查看hdfs文件
+    
+        ```
+        bin/hdfs dfs -cat output/*
+        ```
+8. 停止hdfs服务
+    `sbin/stop-dfs.sh`
+### 参考文档
+https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html#Standalone_Operation
+
+
+## 报JAVA_HOME找不到
+环境变量已经配置了JAVA_HOME，但启动hdfs还是报找不到JAVA_HOME
+需要在hadoop-env.sh中，再显示地重新声明一遍JAVA_HOME
+
+```shell
+export JAVA_HOME=/jdk
+```
+## root启动hdfs
+使用root配置的hadoop并启动会出现报错
+错误：
+        
+```shell
+        Starting namenodes on [master]
+        ERROR: Attempting to operate on hdfs namenode as root
+        
+        ERROR: but there is no HDFS_NAMENODE_USER defined. Aborting operation.
+        
+        Starting datanodes
+        ERROR: Attempting to operate on hdfs datanode as root
+        
+        ERROR: but there is no HDFS_DATANODE_USER defined. Aborting operation.
+        Starting secondary namenodes [slave1]
+        ERROR: Attempting to operate on hdfs secondarynamenode as root
+        ERROR: but there is no HDFS_SECONDARYNAMENODE_USER defined. Aborting operation.
+```
+在/hadoop/sbin路径下： 
+将start-dfs.sh，stop-dfs.sh两个文件顶部添加以下参数
+
+```shell
+HDFS_DATANODE_USER=root
+HADOOP_SECURE_DN_USER=hdfs
+HDFS_NAMENODE_USER=root
+HDFS_SECONDARYNAMENODE_USER=root
+```
+start-yarn.sh，stop-yarn.sh顶部也需添加以下
+
+```shell
+YARN_RESOURCEMANAGER_USER=root
+HADOOP_SECURE_DN_USER=yarn
+YARN_NODEMANAGER_USER=root
+```
+
+## 其他机器无法访问hdfs 9870端口
+1. 查看服务器防火墙
+    centos7防火墙相关配置
+    
+    ```shell
+    # 查看防火墙状态
+    firewall-cmd --state
+    # 停止防火墙
+    systemctl stop firewalld.service
+    # 禁用防火墙开机启动
+    systemctl disable firewalld.service
+    ```
+
+1. 查看hdfs-site.xml里的dfs.http.address配置
+
+## syntax error near unexpected token `<'错误处理
+1. 使用`start-dfs.sh` 而不是 `sh start-dfs.sh`启动
+2. 如果还不能解决试下`hdfs namenode -format `
+
+# 常用命令
+## 创建目录
+**注意** hdfs dfs命令和hadoop dfs命令是等效的
+```  
+bin/hdfs dfs -mkdir -p /user/<username>/input
+```
+**username为当前用户名**
+## 上传文件
+```
+bin/hdfs dfs -put etc/hadoop/*.xml input
+```
+## 修改文件权限
+```
+bin/hdfs dfs -chmod -R 777 /user
+```

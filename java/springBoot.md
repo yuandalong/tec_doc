@@ -458,10 +458,9 @@ person:
     age: 18
     boss: false
     birth: 2017/12/12
-    maps: {k1: v1,k2: 12}
-    lists:
-      - lisi
-      - zhaoliu
+    lists: 
+        - lisi
+        - zhaoliu
     dog:
       name: 小狗
       age: 12

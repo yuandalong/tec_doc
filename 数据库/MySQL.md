@@ -283,3 +283,27 @@ B树索引具有范围查找和前缀查找的能力，对于有N节点的B树�
 
 3. 查看当前等锁的事务
     SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS;
+    
+# 中文乱码处理
+两种情况导致乱码：
+## 服务端配置引起的
+运行sql`show variables like 'character%';`
+![](media/15676838354108.jpg)
+
+看character_set_database和character_set_server是不是utf-8的，不是的话使用下面sql修改：
+
+```sql
+set character_set_database=utf8;
+set character_set_server=utf8;
+```
+
+## 客户端字符集引起的
+一般都是导入数据的时候执行sql文本导致的，在sql前面加上
+`SET NAMES 'utf8';`
+它相当于下面的三句指令：
+
+```sql
+SET character_set_client = utf8;
+SET character_set_results = utf8;
+SET character_set_connection = utf8;
+```

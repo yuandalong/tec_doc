@@ -87,6 +87,9 @@ db.rptDailyBussStat.aggregate([{ $match:{'bussDate':'2016-09-11'}},{$group: { _i
 ## 是否存在指定字段的数据
 `db.accBillMongo.find({'payList':{$exists:true}})` 
 注意exists表达式不能带引号，否则就是查字段值等于表达式字符串的数据了
+  
+## 字段是否为空
+`db.accBillMongo.find({'CurrentApproverList':{$ne:null}})`
      
 ## 模糊查询 
 

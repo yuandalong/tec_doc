@@ -1,11 +1,11 @@
-### 面试题
-#### ArrayList和LinkedList的大致区别
+# 面试题
+## ArrayList和LinkedList的大致区别
 1. ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。 
 2. 对于随机访问get和set，ArrayList觉得优于LinkedList，因为LinkedList要移动指针。 
 3. 对于新增和删除操作add和remove，LinedList比较占优势，因为ArrayList要移动数据。 
 
 
-#### HashMap 源码解读(TreeMap. LinkedHashMap) 
+## HashMap 源码解读(TreeMap. LinkedHashMap) 
 hashmap 允许 空值 和 空key, 非线程安全的,不保证存储顺序 
 初始容量 和 负载因子(0.75) 
 结构化改变,增加或者删除必须是同步的, 单纯的改变值不需要同步 
@@ -18,7 +18,7 @@ treeNode是正常节点的2倍 .
 桶数量到64的时候里面的桶才会被树形化 
 4*8的元素在同一个节点的时候,会被重新更新size大小 
 hashBinNode hashCode是key和value的异或
-#### heap 和 stack 的区别 
+## heap 和 stack 的区别 
 stack: 先进后出 
 函数调用栈,有结构,查询快,线程独占的,存储引用和基本类型
 
@@ -183,7 +183,7 @@ Spring cache
 http://note.youdao.com/noteshare?id=845baac77faa10ec21932a7b3eb0063f
 
 ---
-#### Java EE组件
+## Java EE组件
 
 JDBC:  Java 数据库连接，没有数据库的支持怎么能叫企业级应用？
 
@@ -198,7 +198,7 @@ JTA：  Java 事务管理，支持分布式事务，能在访问、更新多个�
 Java mail : 收发邮件也是必不可少的啊。
 
 ---
-#### POJO
+## POJO
 POJO (Plain Old Java Object)：普通java对象，是相对EJB来说的，EJB中一个bean需要定义N多与业务无关的方法，如下图：
 
 ![](media/11.jpg)
@@ -220,8 +220,8 @@ Spring 框架顺应了POJO的潮流，提供了一个spring 的容器来管理�
 如果一个Bean 需要一些像事务，日志，安全这样的通用的服务，也是只需要声明即可，spring 容器在运行时能够动态的“织入”这些服务，这叫AOP。 
 
 ---
-#### HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化
-##### 1、HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化？
+## HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化
+### 1、HashMap的源码，实现原理，JDK8中对HashMap做了怎样的优化？
 在JDK1.6，JDK1.7中，HashMap采用位桶+链表实现，即使用链表处理冲突，同一hash值的链表都存储在一个链表里。但是当位于一个桶中的元素较多，即hash值相等的元素较多时，通过key值依次查找的效率较低。**而JDK1.8中，HashMap采用位桶+链表+红黑树实现**，当链表长度超过阈值（8）时，将链表转换为红黑树，这样大大减少了查找时间。
 
 简单说下HashMap的实现原理：
@@ -234,14 +234,14 @@ Spring 框架顺应了POJO的潮流，提供了一个spring 的容器来管理�
 ![20160605101246837](media/20160605101246837.png)
 
 
-##### 一，JDK1.8中的涉及到的数据结构
+### 一，JDK1.8中的涉及到的数据结构
 
-###### 1. 位桶数组
+#### 1. 位桶数组
 
 ```java
 transient Node<k,v>[] table;//存储（位桶）的数组</k,v>  
 ```
-###### 2. 数组元素Node<K,V>实现了Entry接口
+#### 2. 数组元素Node<K,V>实现了Entry接口
 ```java
 //Node是单向链表，它实现了Map.Entry接口  
 static class Node<k,v> implements Map.Entry<k,v> {  
@@ -284,7 +284,7 @@ static class Node<k,v> implements Map.Entry<k,v> {
     }  
 ```
     
-###### 3. 红黑树
+#### 3. 红黑树
 ```java
 //红黑树  
 static final class TreeNode<k,v> extends LinkedHashMap.Entry<k,v> {  
@@ -307,7 +307,7 @@ static final class TreeNode<k,v> extends LinkedHashMap.Entry<k,v> {
     }  
 ```
     
-##### 二，源码中的数据域
+### 二，源码中的数据域
 
 加载因子（默认0.75）：为什么需要使用加载因子，为什么需要扩容呢？因为如果填充比很大，说明利用的空间很多，如果一直不进行扩容的话，链表就会越来越长，这样查找的效率很低，因为链表的长度很大（当然最新版本使用了红黑树后会改进很多），扩容之后，将原来链表数组的**每一个链表分成奇偶两个子链表**分别挂在新链表数组的散列位置，这样就减少了每个链表的长度，增加查找效率
 
@@ -331,7 +331,7 @@ public class HashMap<k,v> extends AbstractMap<k,v> implements Map<k,v>, Cloneabl
     final float loadFactor;//填充比（......后面略）  
 ```
     
-##### 三，HashMap的构造函数
+### 三，HashMap的构造函数
 HashMap的构造方法有4种，主要涉及到的参数有，指定初始容量，指定填充比和用来初始化的Map
 
 ```java
@@ -369,8 +369,8 @@ public HashMap(Map<!--? extends K, ? extends V--> m) {
 }  
 ```
 
-##### 四，HashMap的存取机制
-###### 1，HashMap如何getValue值，看源码
+### 四，HashMap的存取机制
+#### 1，HashMap如何getValue值，看源码
 
 ```java
 public V get(Object key) {  
@@ -413,7 +413,7 @@ public V get(Object key) {
 ```
     
 get(key)方法时获取key的hash值，计算hash&(n-1)得到在链表数组中的位置first=tab[hash&(n-1)],先判断first的key是否与参数key相等，不等就遍历后面的链表找到相同的key值返回对应的Value值即可
-###### 2，HashMap如何put(key，value);看源码
+#### 2，HashMap如何put(key，value);看源码
 
 ```java
 public V put(K key, V value) {  
@@ -487,7 +487,7 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
 1，判断键值对数组tab[]是否为空或为null，否则以默认大小resize()；
 2，根据键值key计算hash值得到插入的数组索引i，如果tab[i]==null，直接新建节点添加，否则转入3
 3，判断当前数组中处理hash冲突的方式为链表还是红黑树(check第一个节点类型即可),分别处理
-##### 五，HasMap的扩容机制resize();
+### 五，HasMap的扩容机制resize();
 
 构造hash表时，如果不指明初始大小，默认大小为16（即Node数组大小16），如果Node[]数组中的元素达到（填充比*Node.length）重新调整HashMap大小 变为原来2倍大小,扩容很耗时
 
@@ -591,7 +591,7 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
        return newTab;  
    }  
 ```
-##### 六，JDK1.8使用红黑树的改进
+### 六，JDK1.8使用红黑树的改进
 在java jdk8中对HashMap的源码进行了优化，在jdk7中，HashMap处理“碰撞”的时候，都是采用链表来存储，当碰撞的结点很多时，查询时间是O（n）。
 在jdk8中，HashMap处理“碰撞”增加了红黑树这种数据结构，当碰撞结点较少时，采用链表存储，当较大时（>8个），采用红黑树（特点是查询时间是O（logn））存储（有一个阀值控制，大于阀值(8个)，将链表存储转换成红黑树存储）
 
@@ -610,7 +610,7 @@ JDK1.8HashMap的红黑树是这样解决的：
 
 它是如何工作的？前面产生冲突的那些KEY对应的记录只是简单的追加到一个链表后面，这些记录只能通过遍历来进行查找。但是超过这个阈值后HashMap开始将列表升级成一个二叉树，使用哈希值作为树的分支变量，如果两个哈希值不等，但指向同一个桶的话，较大的那个会插入到右子树里。如果哈希值相等，HashMap希望key值最好是实现了Comparable接口的，这样它可以按照顺序来进行插入。这对HashMap的key来说并不是必须的，不过如果实现了当然最好。如果没有实现这个接口，在出现严重的哈希碰撞的时候，你就并别指望能获得性能提升了。
 
-##### 为什么容量的2的倍数？
+### 为什么容量的2的倍数？
 注意put方法里的这部分代码
 ```java
 int n, i;  
@@ -624,13 +624,13 @@ tab[i]是新的数组元素的值，而i是通过(n - 1) & hash来计算的，�
  
 ---
 
-#### HashMap、Hashtable、ConcurrentHashMap的原理与区别
-##### HashTable
+## HashMap、Hashtable、ConcurrentHashMap的原理与区别
+### HashTable
 
 底层数组+链表实现，无论key还是value都不能为null，线程安全，实现线程安全的方式是在修改数据时锁住整个HashTable，效率低，ConcurrentHashMap做了相关优化
 初始size为11，扩容：newsize = olesize*2+1
 计算index的方法：index = (hash & 0x7FFFFFFF) % tab.length
-##### HashMap
+### HashMap
 
 底层数组+链表实现，可以存储null键和null值，线程不安全
 初始size为16，扩容：newsize = oldsize*2，size一定为2的n次幂
@@ -661,7 +661,7 @@ HashMap和Hashtable的构造器允许指定一个负载极限，HashMap和Hashta
 较低的“负载极限”会提高查询数据的性能，但会增加hash表所占用的内存开销
 程序猿可以根据实际情况来调整“负载极限”值。
 
-##### ConcurrentHashMap
+### ConcurrentHashMap
 
 底层采用**分段**的数组+链表实现，线程安全
 通过把整个Map分为N个Segment，可以提供相同的线程安全，但是效率提升N倍，默认提升16倍。(读操作不加锁，由于HashEntry的value变量是 **volatile**的，也能保证读取到最新的值。)
@@ -670,7 +670,7 @@ Hashtable的synchronized是针对整张Hash表的，即每次锁住整张表让�
 扩容：段内扩容（段内元素超过该段对应Entry数组长度的75%触发扩容，不会对整个Map进行扩容），插入前检测需不需要扩容，有效避免无效扩容
  
 
-##### 总结
+### 总结
 Hashtable和HashMap都实现了Map接口，但是Hashtable的实现是基于Dictionary抽象类的。Java5提供了ConcurrentHashMap，它是HashTable的替代，比HashTable的扩展性更好。
 
 HashMap基于哈希思想，实现对数据的读写。当我们将键值对传递给put()方法时，它调用键对象的hashCode()方法来计算hashcode，然后找到bucket位置来存储值对象。当获取对象时，通过键对象的equals()方法找到正确的键值对，然后返回值对象。HashMap使用链表来解决碰撞问题，当发生碰撞时，对象将会储存在链表的下一个节点中。HashMap在每个链表节点中储存键值对对象。当两个不同的键对象的hashcode相同时，它们会储存在同一个bucket位置的链表中，可通过键对象的equals()方法来找到键值对。如果链表大小超过阈值（TREEIFY_THRESHOLD,8），链表就会被改造为树形结构。
@@ -700,7 +700,7 @@ ConcurrentHashMap默认将hash表分为16个桶，诸如get、put、remove等常
 
 ---
 
-#### 引用传递和值传递的区别
+## 引用传递和值传递的区别
 首先对传值和传引用要有个基本的概念
 
 传值：传递的是值的副本。方法中对副本的修改，不会影响到调用方。
@@ -785,13 +785,13 @@ args = [test1]
 
 只要知道String、Integer类是final类型的就明白输出的结果为什么是这样的。
 
-##### 总结
+### 总结
 基本类型（byte,short,int,long,double,float,char,boolean）为传值；对象类型（Object，数组，容器）为传引用；String、Integer、Double等immutable类型因为类的变量设为**final**属性，无法被修改，只能重新赋值或生成对象。当Integer作为方法参数传递时，**对其赋值会导致原有的引用被指向了方法内的栈地址，失去原有的的地址指向**，所以对赋值后的Integer做任何操作都不会影响原有值。
 
 ---
 
-### 泛型
-#### 泛型的由来
+# 泛型
+## 泛型的由来
 泛型是JDK5引入的，在之前的版本中没有泛型的概念，如集合类的定义可以这样：
 
 ```java
@@ -814,7 +814,7 @@ JDK5加入泛型后，此类问题就解决了，如下图：
 
 ![](media/泛型1.jpg)
 
-#### 泛型的实现
+## 泛型的实现
 在C++里，每次你去实例化一个泛型/模板类都会生成一个新的类，例如模板类是List ，然后你用int ,double,string, Employee 分别去实例化，那编译的时候，就会生成四个新类出来，例如List_int和List_double，List_string, List_Employee。这样一来得生成很多新的类出来，系统大了会膨胀得要爆炸了。
 在java中，不是使用的膨胀法，相反，我们用擦除法。
 
@@ -827,7 +827,7 @@ JDK5加入泛型后，此类问题就解决了，如下图：
 
 其实很简单，java在编译的时候做了点手脚，加了自动的转型嘛： `Integer i = （Integer）list1.get(0);`
 
-#### 泛型方法
+## 泛型方法
 通过上面的例子，泛型类的使用和java的实现过程已经明确了，那泛型方法怎么用呢？
 例如下面：
 
@@ -845,7 +845,7 @@ JDK5加入泛型后，此类问题就解决了，如下图：
 
 除了extends之外，Java泛型还支持super,   实际上为了更加灵活，上面的Comparable<T> 应该写成Comparable <? super T>
 
-#### 泛型和继承
+## 泛型和继承
 先看下面两张图：
 
 ![](media/泛型6.png)
@@ -872,8 +872,8 @@ JDK5加入泛型后，此类问题就解决了，如下图：
 [引自码农翻身Java帝国之泛型](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665514015&idx=1&sn=12409f705c6d266e4cd062e78ce50be0&chksm=80d67c5cb7a1f54a68ed83580b63b4acded0df525bb046166db2c00623a6bba0de3c5ad71884&scene=21#wechat_redirect)
 
 ---
-### 动态代理
-#### 为什么要用动态代理
+# 动态代理
+## 为什么要用动态代理
 在某些函数调用前后加上日志记录
 给某些函数加上事务的支持
 给某些函数加上权限控制
@@ -890,7 +890,7 @@ JDK5加入泛型后，此类问题就解决了，如下图：
 对于所有以DAO结尾的类，所有的方法执行之前都要调用TransactionManager.begin()，执行之后都要调用TransactionManager.commit(), 如果抛出异常的话调用TransactionManager.rollback()。
 
 这就是**AOP**了，能够读取这个XML中的声明，并且能够找到那些需要插入日志的类和方法，接下来就需要修改这些方法了。 但是Java不允许修改一个已经被加载或者正在运行的类，这咋整呢！
-#### java官方实现
+## java官方实现
 虽然不能修改现有的类，但是可以在运行时动态的创建新的类啊，比如有个类HelloWorld:
 
 ![](media/动态代理1.png)
@@ -932,7 +932,7 @@ End Logging
 
 在运行时，在内存中生成了一个新的类，这个类在调用sayHello() 或者add()方法的时候，其实调用的是LoggerHanlder的invoke 方法，而那个invoke就会拦截真正的方法调用，添加日志功能了！ 
 
-#### CGLib的动态代理实现
+## CGLib的动态代理实现
 Code Generation Library简称CGLib，体现了技术的本质，就是一个代码生成的工具。
 
 具体实现参考码农翻身的这片文章：
@@ -940,12 +940,12 @@ Code Generation Library简称CGLib，体现了技术的本质，就是一个代�
 
 CGLib和官方的动态代理的区别是官方动态生成的类和被代理类是实现了同一个接口，即兄弟关系，而CGLib动态生成的类是被代理类的子类，是父子关系。另外CGlib采用的是ASM来实现的对字节码的操作。
 
-#### 官方和CGLib动态代理的比较
+## 官方和CGLib动态代理的比较
 - Jdk代理生成的代理类只有一个，因而其编译速度是非常快的；而由于被代理的目标类是动态传入代理类中的，Jdk代理的执行效率相对来说低一点，这也是Jdk代理被称为动态代理的原因。
 
 - Cglib代理需要为每个目标类生成相应的子类，因而在实际运行过程中，其可能会生成非常多的子类，过多的子类始终不是太好的，因为这影响了虚拟机编译类的效率；但由于在调用过程中，代理类的方法是已经静态编译生成了的，因而Cglib代理的执行效率相对来说高一些。
 
-#### spring AOP动态代理的实现
+## spring AOP动态代理的实现
 spring中实现AOPJDK代理和CGLIB代理两种模式都用了
 
 JDK动态代理只针对实现了接口的类生成代理
@@ -957,8 +957,8 @@ CGlib代理针对类实现代理，主要是指定的类生成的一个子类，
 `
 
 ---
-### 注解
-#### 基础定义
+# 注解
+## 基础定义
 - **注解**有点像加强版的注释，这个“注释”不但有一定的格式，还有特定的含义，这样别的工具就可以读取它来做事情了。
 
 - **元数据**，就是描述数据的数据了，换句话说可以给其他数据提供描述性信息，例如Java类中的某个方法，可以认为是一种数据，如果我的@Override 一旦被用到这个方法上，那就意味着要覆盖父类/接口的方法了，于是我的@Override 就给这个方法提供了额外的信息。但是在源代码中写个@Override 似乎也没什么用处。
@@ -967,7 +967,7 @@ CGlib代理针对类实现代理，主要是指定的类生成的一个子类，
     
     比如@Override ，由编译器来管，当编译这个Java 文件的时候，它就会检查被@Override 修饰的方法是否和父类的方法和参数相同，如果不同，就会报错了。
     
-#### 注解定义
+## 注解定义
 注解定义语法如下：
 
 ![](media/注解1.png)
@@ -979,7 +979,7 @@ CGlib代理针对类实现代理，主要是指定的类生成的一个子类，
 - @Target表示该注解的应用目标，可以是类、方法、 方法参数等等
 - @Retention表示这个注解要保留到什么时候，可以只在源码中，或者class 文件中，或者是运行时。”
 
-#### 注解的使用
+## 注解的使用
 下图代码展示了自定义注解Test的使用。
 自定义的注解和JDK内置的注解都差不多，@Test修饰了方法，表示这个方法可以作为测试用例来运行，@Test(ignore=true)则表示虽然这是个测试方法，但是暂时忽略，不用运行。
 
@@ -993,15 +993,15 @@ CGlib代理针对类实现代理，主要是指定的类生成的一个子类，
 ![](media/注解3.jpg)
 
 ---
-### 事务
-#### 什么是事务
+# 事务
+## 什么是事务
 举个通俗的例子你就明白了， 假设A要给B转账100块钱， A的数据库账户要扣掉100块， B的账户要增加100块， 这就涉及到两个操作， 这两个操作要么全部完成，要么一个都不做，只有这样才能保证数据的一致性， 这就是一个事务。事务有4个特性： 原子性(Atomicity) ，一致性(Consistency）, 隔离性（Isolation） , 持久性（Durability) , 简称ACID。
 
 JDBC会把对数据库的操作认为是一个事务， 当然也可以设置成手工的方式， 手工地提交和回滚事务。不管哪种方式，都是非常简单的。
-#### 两阶段提交 强一致性
-##### 为什么要有两阶段提交
+## 两阶段提交 强一致性
+### 为什么要有两阶段提交
 JDBC事务只是在单个数据库中有用， 如果需要跨数据库怎么办？例如分库了， 比如我的账号存在数据库A,  你的账号在数据库B, 那转账的时候怎么办？ 怎么实现什么ACID ? 此时就需要用到两阶段提交了。
-##### 两阶段提交流程
+### 两阶段提交流程
 **阶段1**： 全局的事务管理器向各个数据库发出准备消息。 各个数据库需要在本地把一切都准备好，执行操作，锁住资源， 记录redo/undo 日志， 但是并不提交， 总而言之，要进入一个时刻准备提交或回滚的状态， 然后向全局事务管理器报告是否准备好了。
 
 **阶段2**： 如果所有的数据库都报告说准备好了， 那全局的事务管理器就下命令： 提交， 这时候各个数据库才真正提交 ， 由于之前已经万事具备，只欠东风，只需要快速完成本地提交即可；
@@ -1016,7 +1016,7 @@ JDBC事务只是在单个数据库中有用， 如果需要跨数据库怎么办
 这个JTA规范用起来也比较简单， 只要获得一个UserTransaction 就可以操作了，程序员根本不用关系底层的协议细节：
 
 ![](media/事务2.jpg)
-##### 两阶段提交的缺点
+### 两阶段提交的缺点
 但是一旦涉及到分布式，事情就不会那么简单，任何地方都有失败的可能。
 
 比如在第二阶段，那个事务管理器要是出了问题怎么办？ 人家各个数据库还在等着你发命令呢？ 你迟迟不发命令，大家都阻塞在那里，不知所措，到底是提交呢？还是不提交呢， 我这里还锁着资源呢， 迟迟不能释放，多耽误事啊 ！　
@@ -1026,14 +1026,14 @@ JDBC事务只是在单个数据库中有用， 如果需要跨数据库怎么办
 为了让两个数据库保证实时的一致性（强一致性）， 为了达到这个目标，JTA付出的代价太高了。 我们现在不想这么干了。 我们可以忍受一段时间的不一致，只有**最终一致**就行。 比方说A给B转100元， A 中的钱已经扣除， 但是B中不会实时地增加，过段时间能保证增加就行了。
 此时就要使用三阶段提交了。
 
-#### 两阶段提交的改进：三阶段提交
+## 两阶段提交的改进：三阶段提交
 三阶段提交与二阶段提交的不同是在两阶段提交的准备阶段和提交阶段之间，插入**预提交阶段**，使三阶段提交拥有CanCommit、PreCommit、DoCommit三个阶段。
 PreCommit是一个缓冲，保证了在最后提交阶段之前各参与节点的状态是一致的。
-##### 三阶段提交的缺点
+### 三阶段提交的缺点
 如果进入PreCommit后，事务管理器发出的是取消请求，假设只有一个执行者收到并进行了取消操作，
 而其他对于系统状态未知的执行者会继续提交，此时系统状态发生不一致性。
 
-#### BASE模型 最终一致性
+## BASE模型 最终一致性
 #####方案1 依赖消息队列
 过程如下图：
 
@@ -1042,7 +1042,7 @@ PreCommit是一个缓冲，保证了在最后提交阶段之前各参与节点�
 - 优点：对于高并发的场景，转账的时候扣完钱， 向消息队列插入消息，事务就结束了， 根本不用什么两阶段提交， 性能很好
 - 缺点：事务需要管理数据库和消息队列，消息队列如果不支持事务的话需要很复杂的逻辑来进行异常处理
 
-##### 方案2 依赖事件表
+### 方案2 依赖事件表
 过程如下图：
 
 ![](media/事务4.png)
@@ -1058,7 +1058,7 @@ PreCommit是一个缓冲，保证了在最后提交阶段之前各参与节点�
 此方案是由Dan Pritchet总结的，称之为BASE模型。
 
 ---
-### NIO
+# NIO
 NIO主要有三大核心部分：Channel(通道)，Buffer(缓冲区), Selector。传统IO基于字节流和字符流进行操作，而NIO基于Channel和Buffer(缓冲区)进行操作，数据总是从通道读取到缓冲区中，或者从缓冲区写入到通道中。Selector(选择区)用于监听多个通道的事件（比如：连接打开，数据到达）。因此，单个线程可以监听多个数据通道。
 
 NIO和传统IO（一下简称IO）之间第一个最大的区别是，IO是面向流的，NIO是面向缓冲区的。 Java IO面向流意味着每次从流中读一个或多个字节，直至读取所有字节，它们没有被缓存在任何地方。此外，它不能前后移动流中的数据。如果需要前后移动从流中读取的数据，需要先将它缓存到一个缓冲区。NIO的缓冲导向方法略有不同。数据读取到一个它稍后处理的缓冲区，需要时可在缓冲区中前后移动。这就增加了处理过程中的灵活性。但是，还需要检查是否该缓冲区中包含所有您需要处理的数据。而且，需确保当更多的数据读入缓冲区时，不要覆盖缓冲区里尚未处理的数据。
@@ -1086,7 +1086,7 @@ IO的各种流是阻塞的。这意味着，当一个线程调用read() 或 writ
 
 ![](media/nio2.png)
 
-#### NIO实例
+## NIO实例
 Selector类可以用于避免使用阻塞式客户端中很浪费资源的“忙等”方法。例如，考虑一个IM服务器。像QQ或者旺旺这样的，可能有几万甚至几千万个客户端同时连接到了服务器，但在任何时刻都只是非常少量的消息。
 
 需要读取和分发。这就需要一种方法阻塞等待，直到至少有一个信道可以进行I/O操作，并指出是哪个信道。NIO的选择器就实现了这样的功能。一个Selector实例可以同时检查一组信道的I/O状态。用专业术语来说，选择器就是一个多路开关选择器，因为一个选择器能够管理多个信道上的I/O操作。然而如果用传统的方式来处理这么多客户端，使用的方法是循环地一个一个地去检查所有的客户端是否有I/O操作，如果当前客户端有I/O操作，则可能把当前客户端扔给一个线程池去处理，如果没有I/O操作则进行下一个轮询，当所有的客户端都轮询过了又接着从头开始轮询；这种方法是非常笨而且也非常浪费资源，因为大部分客户端是没有I/O操作，我们也要去检查；而Selector就不一样了，它在内部可以同时管理多个I/O，当一个信道有I/O操作的时候，他会通知Selector，Selector就是记住这个信道有I/O操作，并且知道是何种I/O操作，是读呢？是写呢？还是接受新的连接；所以如果使用Selector，它返回的结果只有两种结果，一种是0，即在你调用的时刻没有任何客户端需要I/O操作，另一种结果是一组需要I/O操作的客户端，这时你就根本不需要再检查了，因为它返回给你的肯定是你想要的。这样一种通知的方式比那种主动轮询的方式要高效得多！
@@ -1188,7 +1188,7 @@ public class ServerConnect
 ```
 下面来慢慢讲解这段代码。
 
-##### ServerSocketChannel
+### ServerSocketChannel
 
 打开ServerSocketChannel：
 
@@ -1226,7 +1226,7 @@ ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
             }
         }
 ```
-##### Selector
+### Selector
 
 Selector的创建：
 
@@ -1260,7 +1260,7 @@ ssc= ServerSocketChannel.open();
 3. SelectionKey.OP_READ
 4. SelectionKey.OP_WRITE
 
-##### SelectionKey
+### SelectionKey
 
 当向Selector注册Channel时，register()方法会返回一个SelectionKey对象。这个对象包含了一些你感兴趣的属性：
 * interest集合
@@ -1302,7 +1302,7 @@ Object attachedObj = selectionKey.attachment();
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ, theObject);
 ```
 
-##### 通过Selector选择通道
+### 通过Selector选择通道
 
 一旦向Selector注册了一或多个通道，就可以调用几个重载的select()方法。这些方法返回你所感兴趣的事件（如连接、接受、读或写）已经准备就绪的那些通道。换句话说，如果你对“读就绪”的通道感兴趣，select()方法会返回读事件已经就绪的那些通道。
 
@@ -1331,7 +1331,7 @@ SelectionKey.channel()方法返回的通道需要转型成你要处理的类型�
 一个完整的使用Selector和ServerSocketChannel的案例可以参考案例的selector()方法。
 
 ---
-### java中的函数式编程
+# java中的函数式编程
 参考码农翻身的两篇文章：
 
 [一](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513149&idx=1&sn=00e563fbd09c9cf9e2ac4283d43cccf1&scene=21#wechat_redirect)
@@ -1339,7 +1339,7 @@ SelectionKey.channel()方法返回的通道需要转型成你要处理的类型�
 [二](https://mp.weixin.qq.com/s?__biz=MzAxOTc0NzExNg==&mid=2665513152&idx=1&sn=1398826ca9f9ea2b7c374574302a3838&scene=21#wechat_redirect)
 
 ---
-### 编译时常量、运行时常量和静态代码块
+# 编译时常量、运行时常量和静态代码块
  常量是程序运行时恒定不变的量，许多程序设计语言都有某种方法，向编译器告知一块数据时恒定不变的，例如C++中的const和Java中的final。
 
    根据编译器的不同行为，常量又分为编译时常量和运行时常量，其实编译时常量肯定就是运行时常量，只是编译时常量在编译的时候就被计算执行计算，并带入到程序中一切可能用到它的计算式中。
@@ -1381,7 +1381,7 @@ Class Test Was Loaded !
 3. 由于编译时常量不依赖于类，所以对编译时常量的访问不会引发类的初始化。同样的原因，静态块的执行在运行时常量之前，在编译时常量之后
 
 ---
-### Java中创建对象的5种方式
+# Java中创建对象的5种方式
 Java中有5种创建对象的方式，下面给出它们的例子还有它们的字节码
 
 |方法|说明|
@@ -1393,7 +1393,7 @@ Java中有5种创建对象的方式，下面给出它们的例子还有它们的
 |使用反序列化	|} → 没有调用构造函数|
 如果你运行了末尾的的程序，你会发现方法1,2,3用构造函数创建对象，方法4,5没有调用构造函数。
 
-#### 1.使用new关键字
+## 1.使用new关键字
 这是最常见也是最简单的创建对象的方式了。通过这种方式，我们可以调用任意的构造函数(无参的和带参数的)。
 
 ```java
@@ -1403,7 +1403,7 @@ Employee emp1 = new Employee();
 4: invokespecial #21          // Method org/programming/mitra/exercises/Employee."":()V
 ```
 
-#### 2.使用Class类的newInstance方法
+## 2.使用Class类的newInstance方法
 我们也可以使用Class类的newInstance方法创建对象。这个newInstance方法调用无参的构造函数创建对象。
 
 我们可以通过下面方式调用newInstance方法创建对象:
@@ -1418,7 +1418,7 @@ Employee emp2 = Employee.class.newInstance();
 51: invokevirtual    #70    // Method java/lang/Class.newInstance:()Ljava/lang/Object;
 ```
 
-#### 3.使用Constructor类的newInstance方法
+## 3.使用Constructor类的newInstance方法
 和Class类的newInstance方法很像， java.lang.reflect.Constructor类里也有一个newInstance方法可以创建对象。我们可以通过这个newInstance方法调用有参数的和私有的构造函数。
 
 ```java
@@ -1429,7 +1429,7 @@ Employee emp3 = constructor.newInstance();
 
 这两种newInstance方法就是大家所说的反射。事实上Class的newInstance方法内部调用Constructor的newInstance方法。这也是众多框架，如Spring、Hibernate、Struts等使用后者的原因。想了解这两个newInstance方法的区别，请看这篇[Creating objects through Reflection in Java with Example.](https://programmingmitra.blogspot.in/2016/05/creating-objects-through-reflection-in-java-with-example.html)
 
-#### 4.使用clone方法
+## 4.使用clone方法
 无论何时我们调用一个对象的clone方法，jvm就会创建一个新的对象，将前面对象的内容全部拷贝进去。用clone方法创建对象并不会调用任何构造函数。
 
 要使用clone方法，我们需要先实现Cloneable接口并实现其定义的clone方法。
@@ -1439,7 +1439,7 @@ Employee emp4 = (Employee) emp3.clone();
 162: invokevirtual #87  // Method org/programming/mitra/exercises/Employee.clone ()Ljava/lang/Object;
 ```
 
-#### 5.使用反序列化
+## 5.使用反序列化
 当我们序列化和反序列化一个对象，jvm会给我们创建一个单独的对象。在反序列化时，jvm创建对象并不会调用任何构造函数。
 为了反序列化一个对象，我们需要让我们的类实现Serializable接口
 
@@ -1451,7 +1451,7 @@ Employee emp5 = (Employee) in.readObject();
 
 我们从上面的字节码片段可以看到，除了第1个方法，其他4个方法全都转变为invokevirtual(创建对象的直接方法)，第一个方法转变为两个调用，new和invokespecial(构造函数调用)。
 
-#### 例子
+## 例子
 让我们看一看为下面这个Employee类创建对象：
 
 ```java
@@ -1561,3 +1561,222 @@ Employee [name=Akash], hashcode : 63313419
 ```
 
 ---
+
+# String的实例化与static final修饰符
+## String两种实例化方式
+一种是通过双引号直接赋值的方式，另外一种是使用标准的new调用构造方法完成实例化。如下：
+　　String str = "abcd";
+　　String str = new String("1234);
+
+第一种方法：
+　　使用直接赋值后，只要是以后声明的字符串内容相同，则不会再开辟新的内存空间。对于String的以上操作，在java中称为共享设计。这种设计思路是，在java中形成一个字符串对象池，在这个字符串对象中保存多个字符串对象，新实例化的对象如果已经在池中定义了，则不再重新定义，而从池中直接取出继续使用。String就是因为采用了这样的设计，所以当内容重复时，会将对象指向已存在的实例空间。
+
+　　一个双引号包含字符串就是一个String类的匿名对象，但是这种方式使用String不一定创建新对象。在执行到这个字符串的语句时，如String a = "123"，JVM会先到常量池里查找，如果有的话返回常量池里的这个实例的引用，否则的话创建一个新实例并置入常量池里。
+
+第二种方法：
+　　使用new关键字，不管如何都会再开辟一个新的空间。
+　　new创建字符串时首先查看池中是否有相同值的字符串，如果有，则拷贝一份到堆中，然后返回堆中的地址；如果池中没有，则在堆中创建一份，然后返回堆中的地址（注意，此时不需要从堆中复制到池中，否则，将使得堆中的字符串永远是池中的子集，导致浪费池的空间）！
+
+ 
+
+## String实例化的时机
+（1）单独使用""引号创建的字符串都是常量，编译期就已经确定存储到String Pool中；
+（2）使用new String("")创建的对象会存储到堆区（heap）中，是运行期新创建的；
+（3）使用只包含常量的字符串连接符如"aa" + "aa"创建的也是常量，编译期就能确定，已经确定存储到String Pool中；
+（4）使用包含变量的字符串连接符如"aa" + s1创建的对象是运行期才创建的，存储在堆区（heap）中；
+
+　　注意：上面第（3）句话，编译后合并的字符串会保存在JVM的字符串池中，而不是再生成的class文件中把字符串合并。
+　　String s = "a" + "b" + "c"; 创建的是一个对象，而不是是四个对象，在字符串常量池中只生成一个字符串对象
+
+ 
+
+## 字符串池的优缺点
+　　字符串池的优点就是避免了相同内容的字符串的创建，节省了内存，省去了创建相同字符串的时间，同时提升了性能；另一方面，字符串池的缺点就是牺牲了JVM在常量池中遍历对象所需要的时间，不过其时间成本相比而言比较低。
+
+ 
+
+## static final修饰的字符串好吗？
+工作后发现，大型的项目里，常常会见到定义字符串使用 private static final String = "abc" 的方式。这种方式有好处吗？
+
+　　首先使用直接赋值的字串的方式，字符串会在编译期生成在字符串池中。
+
+　　然后final标记的变量（成员变量或局部变量）即成为常量，只能赋值一次。它应该不影响内存的分配。（查看资料多了，说法不一，在下对此也有点怀疑了，如果final影响内存分配，烦请各位大侠告知）
+
+　　最后看static修饰符：
+        static修饰符能够与属性、方法和内部类一起使用，表示静态的。类中的静态变量和静态方法能够与类名一起使用，不需要创建一个类的对象来访问该类的静态成员，所以，static修饰的变量又称作“类变量”。
+　　“类变量”属于类的成员，类的成员是被储存在堆内存里面的。一个类中，一个static变量只会有一个内存空间，即使有多个类实例，但这些类实例中的这个static变量会共享同一个内存空间。
+
+　　static修饰的String，会在堆内存中复制一份常量池中的值。所以调用 static final String 变量，实际上是直接调用堆内存的地址，不会遍历字符串池中的对象，节省了遍历时间。
+
+所以使用static final修饰的字符串还是有好处的。
+
+ 
+
+## 代码测试
+
+```java
+public class Test
+{
+    public static final String A="ab";
+    public static final String B="cd";
+
+    public static final String C;
+    public static final String D;
+    static{
+        C = "ab";
+        D = "cd";
+    }
+    public static void main(String[] args) {
+        String t = "abcd";//指向池
+
+        String s1 = "ab";//指向池
+        String s2 = "cd";//指向池
+
+        String s = s1+s2;//指向堆
+        System.out.println(s==t);//false
+
+        String ss = "ab"+s2;//指向堆
+        System.out.println(ss==t);//false
+
+        String sss = "ab"+"cd";//指向池
+        System.out.println(sss==t);//true
+
+        String ssss = A+B;//指向池
+        System.out.println(ssss==t);//true
+
+        System.out.println((C+D)==t);//false
+    }
+
+}
+```
+ 
+
+字符串对象可以存放在两个地方，字符串池(pool)和堆，编译期确定如何给一个引用变量赋值
+
+1. String s="abc";这种形式决定将从pool中寻找内容相同的字符串并返回地址给s，pool中没有就会在pool中新建并返回地址给s
+2. String s = new String("abc");这种形式决定运行期将在堆上新建字符串对象并返回给s，但这个对象不会加入到pool中
+3. String s=s1+s2;s1和s2都是变量，这种形式决定将在堆上创建s1和s2（即便s1和s2指向的对象在池中已经存在，也会将值拷贝到对象创建新对象），然后创建s1+s2并赋给s
+4. String s = "ab"+"cd";同1)，都是来自于池
+5. String s = "ab"+s1;类似3)
+6. String s = S1+S2;S1和S2是常量，常量只能赋值一次，S1，S2如果在声明的地方就赋值，那么这个值在编译期就是确定的，后面无法更改，S1+S2在执行前可确定S1/S2已经在池中存在，当然在池中进行，所以s指向pool；但是若S1，S2如果是实例常量在构造器中赋值，或是类常量在静态块中赋值，S1+S2无法确定二者皆来自于池，于是在堆上进行
+
+# 创建java子类出现is not an enclosing class
+
+```java
+public class A {  
+    public class B {  
+          
+    }  
+};  
+```
+
+需要实例B类时,按照正逻辑是,A.B ab = new A.B();
+那么编译器就会出现一个错误--"is not an enclosing class"
+再翻看相关的Java代码,发现原来写法出错了!正确的做法是
+
+```java
+A a = new A();  
+A.B ab = a.new B();  
+```
+
+没有**静态(static)的类中类不能使用外部类进行操作**,必须用实例来进行实例化类中类.
+
+# List初始化的几种方法
+## 1、常规方式
+
+```java
+List<String> languages = new ArrayList<>();
+languages.add("Java");
+languages.add("PHP");
+languages.add("Python");
+System.out.println(languages);
+
+```
+这种就是我们平常用的最多最平常的方式了，没什么好说的，后面缺失的泛型类型在 JDK 7 之后就可以不用写具体的类型了，改进后会自动推断类型。
+
+## 2、Arrays 工具类
+
+```java
+List<String> jdks = asList("JDK6", "JDK8", "JDK10");
+System.out.println(jdks);
+```
+注意，上面的 asList 是 Arrays 的静态方法，这里使用了静态导入。这种方式添加的是不可变的 List, 即不能添加、删除等操作，需要警惕。。
+
+```java
+import static java.util.Arrays.asList;
+```
+
+如果要可变，那就使用 ArrayList 再包装一下，如下面所示。
+
+```java
+List<String> numbers = new ArrayList<>(Arrays.asList("1", "2", "3"));
+numbers.add("4");
+System.out.println(numbers);
+```
+包装一下，这就是可变的 ArrayList 了。
+
+## 3、Collections 工具类
+
+```java
+List<String> apples = Collections.nCopies(3, "apple");
+System.out.println(apples);
+```
+这种方式添加的是不可变的、复制某个元素N遍的工具类，以上程序输出：
+
+`[apple, apple, apple]`
+老规则，如果要可变，使用 ArrayList 包装一遍。
+
+```java
+List<String> dogs = new ArrayList<>(Collections.nCopies(3, "dog"));
+dogs.add("dog");
+System.out.println(dogs);
+```
+还有初始化单个对象的 List 工具类，这种方式也是不可变的，集合内只能有一个元素，这种也用得很少啊。
+
+```java
+List<String> cat = Collections.singletonList("cat");
+System.out.println(cat);
+```
+还有一个创建空 List 的工具类，没有默认容量，节省空间，但不知道实际工作中有什么鸟用。
+
+```java
+List<String> cat = Collections.emptyList("cat");
+```
+
+## 4、匿名内部类
+
+```java
+List<String> names = new ArrayList<>() {{
+    add("Tom");
+    add("Sally");
+    add("John");
+}};
+System.out.println(names);
+
+```
+这种使用了匿名内部类的方式，一气喝成，是不是很高大上？栈长我曾经也使用过这种方式，不过我觉得这种看似高级，实现也没什么卵用。
+
+## 5、JDK8 Stream
+
+```java
+List<String> colors = Stream.of("blue", "red", "yellow").collect(toList());
+System.out.println(colors);
+
+```
+Stream 是 JDK 8 推出来的新概念，比集合还要更强大，还可以和集合互相转换。
+
+上面同样使用了静态导入：
+
+`import static java.util.stream.Collectors.toList;`
+
+关于 Stream 的一系列教程，可以在Java技术栈微信公众号后台回复关键字：新特性。
+
+## 6、JDK 9 List.of
+
+```java
+List<String> cups = List.of("A", "B", "C");
+System.out.println(cups);
+
+```
+这是 JDK 9 里面新增的 List 接口里面的静态方法，同样也是不可变的。
+

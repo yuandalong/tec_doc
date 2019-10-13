@@ -136,7 +136,7 @@ du -sh ./* 计算当前目录所有文件夹大小
 
 # awk
 用|分隔，打印第一个参数，注意print选项的大括号和单引号
-awk -F "|" '{print $1}'
+`awk -F "|" '{print $1,$2}'`
 -F默认为空格
 参数从$1开始，print时多个参数用逗号分隔
 
@@ -148,7 +148,7 @@ awk -F "|" '{print $1}'
 
 结合uniq使用可查出文本里出现次数最多的字符串
 先sort排下序 然后 uniq -c去重并统计重复次数然后再sort排序
-more info.2016-08-31.log | grep 'execute time'| awk '{print $10,$4,$5}'| sort | uniq -c |sort -u -n -r
+`more info.2016-08-31.log | grep 'execute time'| awk '{print $10,$4,$5}'| sort | uniq -c |sort -u -n -r`
 
 # more
 more命令，功能类似 cat ，cat命令是整个文件的内容从上到下显示在屏幕上。 more会以一页一页的显示方便使用者逐页阅读，而最基本的指令就是按空白键（space）就往下一页显示，按 b 键就会往回（back）一页显示，而且还有搜寻字串的功能 。more命令从前向后读取文件，因此在启动时就加载整个文件。
@@ -520,3 +520,14 @@ command>a 2>&1这条命令，等价于command 1>a 2>&1可以理解为执行comma
 
 同时，还有一个最佳实践：
 **不要将信息输出到终端标准输出，标准错误输出，而要用日志组件将信息记录到日志里**
+
+# 查看网络使用情况
+`sar -n DEV interval count`
+
+其中，interval是统计时间间隔，以秒为单位；count是总共统计几次，如果为0就不断的统计直到 Ctrl+C 打断，否则执行count次就退出。
+返回参数：
+IFACE：LAN接口
+rxpck/s：每秒钟接收的数据包
+txpck/s：每秒钟发送的数据包
+rxbyt/s：每秒钟接收的字节数，有些系统返回的是rxkB/s，即每秒接收多少kb
+txbyt/s：每秒钟发送的字节数，有些系统返回的是txkB/s，即每秒发送多少kb
