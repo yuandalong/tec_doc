@@ -307,3 +307,171 @@ SET character_set_client = utf8;
 SET character_set_results = utf8;
 SET character_set_connection = utf8;
 ```
+
+# 自增主键
+
+插入方式分为三类：
+* 简单插入(simple insert)
+* 批量插入(bulk insert)
+* 混合插入(mixed-mode insert)
+ 
+## 实验
+### 实验一、自增键初始值测验
+```sql
+drop table t1;
+create table t1(
+    id int not null auto_increment,
+    name varchar(10) unique,
+    count int default 0,
+    primary key(id),
+    index(name)
+)engine=innodb;
+
+insert into t1(name) values("zhangsan"),("lisi"),("wangwu");
+select * from t1;
+```
+请问，被插入的三条记录，id分别为：
+A 0,1,2
+B 1,2,3
+C 以上都不对
+
+
+答案：B
+
+**自增键从1开始**，该测验对应《三类插入与自增键的关系》中的简单插入(simple insert)。简单插入，能够提前知道被插入的行数，在处理自增键时，是最容易的。
+
+### 实验二、批量插入测验
+```sql
+drop table t1,t2;
+create table t1(
+    id int not null auto_increment,
+    name varchar(10) unique,
+    count int default 0,
+    primary key(id),
+    index(name)
+)engine=innodb;
+
+create table t2(
+    name varchar(10) unique
+)engine=innodb;
+
+insert into t2(name) values("x"),("y"),("z");
+
+insert into t1(name) select name from t2;
+select * from t1;
+```
+
+请问，上述insert...select...的执行结果是：
+A 插入成功
+B 插入失败，自增键报错
+C 以上都不对
+
+
+答案：A
+
+插入成功，该测验对应《三类插入与自增键的关系》中的批量插入(bulk insert)。批量插入，不能提前知道被插入的行数，在处理自增键时，每插入一行，才会赋值新的自增值，在批量插入事务并发时，“可能”出现同一个事务的自增键不连续。
+画外音：可以有优化机制，未来撰文。
+
+### 实验三、混合插入测验
+```sql
+drop table t1;
+create table t1(
+    id int not null auto_increment,
+    name varchar(10) unique,
+    count int default 0,
+    primary key(id),
+    index(name)
+)engine=innodb;
+
+insert into t1(id, name) values(1, "shenjian");
+
+insert into t1(id, name) values (111, "111"),(NULL, "abc"),(222, "222"),(NULL,"xyz");
+select * from t1;
+```
+请问，最后一个insert语句，执行结束后id分别是：
+A 1,2,3,111,222
+B 1,111,112,222,223
+C 插入失败，自增键报错
+D 以上都不对
+
+
+答案：B
+
+插入成功，自增键每次从最大值后面开始新增，该测验对应《三类插入与自增键的关系》中的混合插入(mixed-mode insert)。有些行插入时指定了自增键，无需数据库生成；有些行插入时未指定自增键(NULL)，需要数据库生成。
+
+### 实验四、insert ... on duplicate key测验
+接着实验三，继续执行以下语句：
+```sql
+insert into t1(name)values("shenjian"),("aaa"),("bbb")
+on duplicate key update count=100;
+select * from t1;
+```
+请问，最后一个insert语句，执行结束后id分别是：
+A 1,2,3,111,222,223,224,225
+B 1,111,112,222,223,224,225,226
+C 1,111,112,222,223,224,225
+D 1,111,112,222,223,225,226
+E 以上都不对
+
+
+答案：D
+
+该测验也对应《三类插入与自增键的关系》中的混合插入(mixed-mode insert)。有些行插入实际上是修改，无需数据库生成自增键；有些行插入实际上就是插入，需要数据库生成自增键。
+
+insert … on duplicate key update … 这种情况是最最复杂的，它可能导致，系统生成的自增值，在更新阶段用不上。
+画外音，官网原文是：
+an INSERT followed by a UPDATE, where the allocated value for the AUTO_INCREMENT column may or may not be used during the update phase. 
+ 
+## 什么是简单插入(simple insert)？
+普通的insert/replace语句，不管是单条插入还是多条插入，都是简单插入。
+画外音：
+（1）不包含递归的子查询；
+（2）不包含insert … on duplicate key update… ；
+ 
+如《自增键测试》里的实验一：
+insert into t1(id, name) values(1,"shenjian");
+insert into t1(name) values("zhangsan"),("lisi"),("ww");
+都是简单插入。
+ 
+简单插入的特点是，能够提前知道被插入的行数。
+ 
+因此，这类插入，在处理自增键时，是最容易的。
+画外音：很容易保证自增键连续性。
+ 
+## 什么是批量插入(bulk insert)？
+与简单插入相对，在插入时，不知道被插入的行数，是批量插入。
+ 
+如《自增键测试》里的实验二：
+insert into t1(name) select name from t2;
+ 
+除此之外，像：
+replace … select …
+load data
+都是批量插入。
+ 
+由于不能够提前知道多少行插入，在处理自增列时，每插入一行，才会赋值新的自增值。
+画外音，官网原文是：
+InnoDB assigns new values for the AUTO_INCREMENT column one at a time as each row is processed.
+ 
+这里的潜台词是，在批量插入事务并发时，“可能”出现同一个事务的自增键不连续。
+画外音：为啥是“可能”呢？潜在解决方案，未来撰文详述。
+ 
+## 什么是混合插入(mixed-mode insert)？
+如《自增键测试》里的实验三：
+insert into t1(id, name) values (111,"111"),(NULL, "abc"),(222,"222"),(NULL,"xyz");
+ 
+有些行插入时指定了自增键，无需数据库生成；
+有些行插入时未指定自增键(NULL)，需要数据库生成。
+画外音：具体走哪个分支，实际执行时才知道。
+ 
+以及《自增键测试》里实验四：
+insert into t1(name) values("shenjian"),("aaa"),("bbb")
+on duplicate key update count=100;
+ 
+有些行插入实际上是修改，无需数据库生成自增键；
+有些行插入实际上就是插入，需要数据库生成自增键。
+画外音：具体走哪个分支，也是实际执行时才知道。
+ 
+insert … on duplicate key update … 这种情况是最最复杂的，它可能导致，系统生成的自增值，在更新阶段用不上。
+
+转自[架构师之路](https://mp.weixin.qq.com/s/lSPI6UUJiZLSgV9RqqP1Rg)

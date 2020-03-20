@@ -1,5 +1,5 @@
-## Mybatis缓存
-### MyBatis缓存介绍
+# Mybatis缓存
+## MyBatis缓存介绍
 正如大多数持久层框架一样，MyBatis 同样提供了一级缓存和二级缓存的支持
 
 * 一级缓存: 基于PerpetualCache 的 HashMap本地缓存，其存储作用域为 Session，当 Session flush 或 close 之后，该Session中的所有 Cache 就将清空。
@@ -7,7 +7,7 @@
 
 对于缓存数据更新机制，当某一个作用域(一级缓存Session/二级缓存Namespaces)的进行了 C/U/D 操作后，默认该作用域下所有 select 中的缓存将被clear。
 
-#### Mybatis一级缓存测试
+### Mybatis一级缓存测试
 
 ```java
 package me.gacl.test;
@@ -70,7 +70,7 @@ public class TestOneLevelCache {
     }
 }
 ```
-#### Mybatis二级缓存测试
+### Mybatis二级缓存测试
 
 1. 开启二级缓存，在userMapper.xml文件中添加如下配置
 ```xml
@@ -135,3 +135,79 @@ flushInterval="60000" <!--自动刷新时间60s-->
 size="512" <!--最多缓存512个引用对象-->
 readOnly="true"/> <!--只读-->
 ```
+
+# insert返回主键
+## xml形式
+方法1 推荐
+```xml
+<!-- 
+		所有数据库通用，插入成功返回最近一次插入的id
+		它会将id直接赋值到对应的实体当中
+			TStudent stu = new TStudent();
+			studentMapper.add(TStudent );
+			int pk = stu.getId(); // 这就是我们的主键id
+ -->
+<insert id="add" parameterType="TStudent" useGeneratedKeys="true" keyProperty="id">
+  insert into TStudent(name, age) values(#{name}, #{age})
+</insert>
+```
+
+方法2
+```xml
+<!-- 注意 keyProperty 属性，selectKey 标签，主键是id -->
+<insert id="insertEstimate" parameterType="java.util.Map" useGeneratedKeys="true" keyProperty="id">
+	<!-- 获取最近一次插入记录的主键值的方式 -->
+	<selectKey resultType="java.lang.Integer" order="AFTER" keyProperty="id">
+		SELECT @@IDENTITY
+	</selectKey>
+	insert into test_table(estimate_no) values(#{budgetNo})
+</insert>	
+```
+
+## 注解形式
+结合Options注解使用
+```java
+@Insert("insert into nxqf_user(username,nickname,password,phone,email,created,updated) values(#{user.username},#{user.nickname},#{user.password},#{user.phone},#{user.email},#{user.created},#{user.updated})")
+@Options(useGeneratedKeys=true, keyProperty="user.id", keyColumn="id")
+Integer addUser(@Param("user") User user);
+```
+如果传入得参数是个对象的时候，这时候我们的keyProperty这个属性值一定要设置成user.id，这样的话，我们插入数据后，主键的值就会自动插入到我们的user对象中去了
+
+# save or update
+
+```sql
+-- 设置好表的主键之后使用ON DUPLICATE KEY UPDATE，当主键冲突时触发update
+INSERT INTO rmw_column_info 
+(dataSource_id, dataSource_siteId, column_id, column_name) 
+VALUES(#{1,2,3,'aa') 
+ON DUPLICATE KEY UPDATE column_name = 'aa'
+```
+
+# springboot + mybatis
+参考[githup项目](https://github.com/yuandalong/spring-boot-examples/tree/master/spring-boot-mybatis)
+
+要点：
+1. pom加mybatis的starter
+    
+    ```xml
+    <dependency>
+          <groupId>org.mybatis.spring.boot</groupId>
+          <artifactId>mybatis-spring-boot-starter</artifactId>
+          <version>2.0.0</version>
+    </dependency>
+    ```
+2. 设置@MapperScan或者@Mapper
+    1. 这俩注解使用一种就可以了
+    2. @MapperScan用在启动类或者多数据源项目的DataSourceConfig类，需指定Dao接口所在的package
+    3. @Mapper用在Dao接口里
+3. 开启表字段名到实体类驼峰属性名映射功能
+4. 开启日志打印
+    
+    ```
+    mybatis:
+      configuration:
+        #开启驼峰映射
+        map-underscore-to-camel-case: true
+        #开启日志
+        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    ```

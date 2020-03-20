@@ -785,6 +785,26 @@ args = [test1]
 
 只要知道String、Integer类是final类型的就明白输出的结果为什么是这样的。
 
+## 按位运算和逻辑运算的区别
+接位与和逻辑与（符号为＆＆）运算都可以作用于条件表达 式，但是后者有**短路**功能
+如下demo：
+```java
+boolean a = true;
+boolean b = true;
+boolean c = (a = (1 == 2)) && (b = (1 == 2));
+System.out.println(a);
+System.out.println(b);
+System.out.println(c);
+```
+打印结果为false true false
+因为a = (1 == 2)为false，此处短路了，后面的b = (1 == 2)不会执行
+而如果改成按位与运算
+`boolean c = (a = (1 == 2)) && (b = (1 == 2))`
+则打印结果为三个false，因为按位运算不会短路
+
+
+
+
 ### 总结
 基本类型（byte,short,int,long,double,float,char,boolean）为传值；对象类型（Object，数组，容器）为传引用；String、Integer、Double等immutable类型因为类的变量设为**final**属性，无法被修改，只能重新赋值或生成对象。当Integer作为方法参数传递时，**对其赋值会导致原有的引用被指向了方法内的栈地址，失去原有的的地址指向**，所以对赋值后的Integer做任何操作都不会影响原有值。
 
@@ -1780,3 +1800,256 @@ System.out.println(cups);
 ```
 这是 JDK 9 里面新增的 List 接口里面的静态方法，同样也是不可变的。
 
+# java除法保留小数
+java中，当两个整数相除时，由于小数点以后的数字会被截断，运算结果将为整数，此时若希望得到运算结果为浮点数，
+
+必须将两整数其一或是两者都强制转换为浮点数。因为int 是整数，整数除整数就是整数double是小数。小数除小数才是小数
+
+转换成double，或直接定义成double
+如     
+```java
+ double a=1;
+ double b=100;
+ System.out.println(a/b);
+ // 结果 为0.01
+```
+
+java保留两位小数的两种方法：
+
+## 方法1:用Math.round计算
+这里返回的数字格式的.
+
+```java
+float price=89.89;
+int Num=3;
+float totalPrice=price*Num;
+float num=(float)(Math.round(totalPrice*100))/100;//如果要求精确4位就*10000然后/10000
+```
+
+## 方法2:用DecimalFormat 
+返回的是String格式的.该类对十进制进行全面的封装.像%号,千分位,小数精度.科学计算.
+
+```java
+float price=1.2;
+DecimalFormat decimalFormat=new DecimalFormat(".00");//构造方法的字符格式这里如果小数不足2位,会以0补足.
+String p=decimalFomat.format(price);//format 返回的是字符串
+```
+
+# 多个if else的解决方案
+主要是使用策略模式和工厂模式
+
+## 需求
+外卖平台，有这样的需求：
+
+外卖平台上的某家店铺为了促销，设置了多种会员优惠，其中包含超级会员折扣 8 折、普通会员折扣 9 折和普通用户没有折扣三种。
+
+希望用户在付款的时候，根据用户的会员等级，就可以知道用户符合哪种折扣策略，进而进行打折，计算出应付金额。
+
+随着业务发展，新的需求要求专属会员要在店铺下单金额大于 30 元的时候才可以享受优惠。
+
+接着，又有一个变态的需求，如果用户的超级会员已经到期了，并且到期时间在一周内，那么就对用户的单笔订单按照超级会员进行折扣，并在收银台进行强提醒，引导用户再次开通会员，而且折扣只进行一次。
+
+
+
+## 原始代码
+```java
+public BigDecimal calPrice(BigDecimal orderPrice, String buyerType) {
+
+    if (用户是专属会员) {
+        if (订单金额大于30元) {
+            returen 7折价格;
+        }
+    }
+
+    if (用户是超级会员) {
+        return 8折价格;
+    }
+
+    if (用户是普通会员) {
+        if(该用户超级会员刚过期并且尚未使用过临时折扣){
+            临时折扣使用次数更新();
+            returen 8折价格;
+        }
+        return 9折价格;
+    }
+    return 原价;
+}
+```
+
+## 优化方案
+### 第一步 使用策略模式
+
+首先，定义一个接口：
+```java
+public interface UserPayService {
+
+    /**
+     * 计算应付价格
+     */
+    public BigDecimal quote(BigDecimal orderPrice);
+}
+```
+
+接着定义几个策略类：
+```java
+public class ParticularlyVipPayService implements UserPayService {
+
+    @Override
+    public BigDecimal quote(BigDecimal orderPrice) {
+         if (消费金额大于30元) {
+            return 7折价格;
+        }
+    }
+}
+
+public class SuperVipPayService implements UserPayService {
+
+    @Override
+    public BigDecimal quote(BigDecimal orderPrice) {
+        return 8折价格;
+    }
+}
+
+public class VipPayService implements UserPayService {
+
+    @Override
+    public BigDecimal quote(BigDecimal orderPrice) {
+        if(该用户超级会员刚过期并且尚未使用过临时折扣){
+            临时折扣使用次数更新();
+            returen 8折价格;
+        }
+        return 9折价格;
+    }
+}
+```
+
+引入了策略之后，我们可以按照如下方式进行价格计算：
+
+```java
+public class Test {
+
+    public static void main(String[] args) {
+        UserPayService strategy = new VipPayService();
+        BigDecimal quote = strategy.quote(300);
+        System.out.println("普通会员商品的最终价格为：" + quote.doubleValue());
+
+        strategy = new SuperVipPayService();
+        quote = strategy.quote(300);
+        System.out.println("超级会员商品的最终价格为：" + quote.doubleValue());
+    }
+}
+```
+以上，就是一个例子，可以在代码中 New 出不同的会员的策略类，然后执行对应的计算价格的方法。
+
+但是，真正在代码中使用，比如在一个 Web 项目中使用，上面这个 Demo 根本没办法直接用。
+
+首先，在 Web 项目中，上面我们创建出来的这些策略类都是被 Spring 托管的，我们不会自己去 New 一个实例出来。
+
+其次，在 Web 项目中，如果真要计算价格，也是要事先知道用户的会员等级，比如从数据库中查出会员等级，然后根据等级获取不同的策略类执行计算价格方法。
+
+那么，Web 项目中真正的计算价格的话，伪代码应该是这样的：
+```java
+public BigDecimal calPrice(BigDecimal orderPrice,User user) {
+
+     String vipType = user.getVipType();
+
+     if (vipType == 专属会员) {
+        //伪代码：从Spring中获取超级会员的策略对象
+        UserPayService strategy = Spring.getBean(ParticularlyVipPayService.class);
+        return strategy.quote(orderPrice);
+     }
+
+     if (vipType == 超级会员) {
+        UserPayService strategy = Spring.getBean(SuperVipPayService.class);
+        return strategy.quote(orderPrice);
+     }
+
+     if (vipType == 普通会员) {
+        UserPayService strategy = Spring.getBean(VipPayService.class);
+        return strategy.quote(orderPrice);
+     }
+     return 原价;
+}
+```
+通过以上代码，我们发现，代码可维护性和可读性好像是好了一些，但是好像并没有减少 if-else
+
+这就是策略模式的一个缺点：
+策略模式的使用上，客户端必须知道所有的策略类，并自行决定使用哪一个策略类。这就意味着客户端必须理解这些算法的区别，以便适时选择恰当的算法类。
+
+也就是说，虽然在计算价格的时候没有 if-else 了，但是选择具体的策略的时候还是不可避免的还是要有一些 if-else。
+
+### 第二步 使用spring bean和工厂模式
+为了方便我们从 Spring 中获取 UserPayService 的各个策略类，我们创建一个工厂类：
+
+```java
+public class UserPayServiceStrategyFactory {
+
+    private static Map<String,UserPayService> services = new ConcurrentHashMap<String,UserPayService>();
+
+    public  static UserPayService getByUserType(String type){
+        return services.get(type);
+    }
+
+    public static void register(String userType,UserPayService userPayService){
+        Assert.notNull(userType,"userType can't be null");
+        services.put(userType,userPayService);
+    }
+}
+```
+
+定义了一个 Map，用来保存所有的策略类的实例，并提供一个 getByUserType 方法，可以根据类型直接获取对应的类的实例。还有一个 Register 方法，这个后面再讲。
+
+有了这个工厂类之后，计算价格的代码即可得到大大的优化：
+
+```java
+public BigDecimal calPrice(BigDecimal orderPrice,User user) {
+
+     String vipType = user.getVipType();
+     UserPayService strategy = UserPayServiceStrategyFactory.getByUserType(vipType);
+     return strategy.quote(orderPrice);
+}
+```
+
+### 第三步 spring bean的注册
+接下来，我们就想办法调用 Register 方法，把 Spring 通过 IOC 创建出来的 Bean 注册进去就行了。
+
+这种需求，可以借用 Spring 中提供的 InitializingBean 接口，这个接口为 Bean 提供了属性初始化后的处理方法。
+
+它只包括 afterPropertiesSet 方法，凡是继承该接口的类，在 Bean 的属性初始化后都会执行该方法。
+
+
+那么，我们将前面的各个策略类稍作改造即可：
+
+```java
+@Service
+public class ParticularlyVipPayService implements UserPayService,InitializingBean {
+
+    @Override
+    public BigDecimal quote(BigDecimal orderPrice) {
+         if (消费金额大于30元) {
+            return 7折价格;
+        }
+    }
+    
+    /**
+    使用afterPropertiesSet将bean注册到工厂
+    **/
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        UserPayServiceStrategyFactory.register("ParticularlyVip",this);
+    }
+}
+```
+
+只需要每一个策略服务的实现类都实现 InitializingBean 接口，并实现其 afterPropertiesSet 方法，在这个方法中调用 UserPayServiceStrategyFactory.register 即可。
+
+## 总结
+其实，如果对策略模式和工厂模式了解的话，文中使用的并不是严格意义上面的策略模式和工厂模式。
+
+首先，策略模式中重要的 Context 角色在这里面是没有的，没有 Context，也就没有用到组合的方式，而是使用工厂代替了。
+
+另外，这里面的 UserPayServiceStrategyFactory 其实只是维护了一个 Map，并提供了 Register 和 Get 方法而已，而工厂模式其实是帮忙创建对象的，这里并没有用到。
+
+所以，读者不必纠结于到底是不是真的用了策略模式和工厂模式。而且，这里面也再扩展一句，所谓的 GOF 23 种设计模式，无论从哪本书或者哪个博客看，都是简单的代码示例，但是我们日常开发很多都是基于 Spring 等框架的，根本没办法直接用的。
+
+所以，对于设计模式的学习，重要的是学习其思想，而不是代码实现！！！

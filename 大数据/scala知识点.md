@@ -1,6 +1,7 @@
-### 基础知识
+# 面试题
+## 基础知识
 
-#### Q1  var，val和def三个关键字之间的区别？
+### Q1  var，val和def三个关键字之间的区别？
 
 var是变量声明关键字，类似于Java中的变量，变量值可以更改，但是变量类型不能更改。
 val常量声明关键字。
@@ -33,12 +34,12 @@ x+x  //
 y+y  // x 没有计算, 打印结果"computing y" 
 ```
 
-#### Q2 trait（特质）和abstract class（抽象类）的区别？
+### Q2 trait（特质）和abstract class（抽象类）的区别？
 （1）一个类只能集成一个抽象类，但是可以通过with关键字继承多个特质；
 （2）抽象类有带参数的构造函数，特质不行（如 trait t（i：Int）{} ，这种声明是错误的）
 
 
-#### Q3 object和class的区别？
+### Q3 object和class的区别？
 
 object是类的单例对象，开发人员无需用new关键字实例化。如果对象的名称和类名相同，这个对象就是伴生对象（深入了解请参考问题Q7）
 
@@ -57,7 +58,7 @@ Myclass.classMethod()  //无法直接调用类的方法
 MyObject.objectMethod() //打印结果object，对象可以直接调用方法
 ```
 
-#### Q4 case class （样本类）是什么？
+### Q4 case class （样本类）是什么？
 
 样本类是一种不可变且可分解类的语法糖，这个语法糖的意思大概是在构建时，自动实现一些功能。样本类具有以下特性：
 （1）自动添加与类名一致的构造函数（这个就是前面提到的伴生对象，通过apply方法实现），即构造对象时，不需要new；
@@ -84,13 +85,13 @@ val c2 = new MyClass(1, "txt", List.empty)
 println(c1 == c2 )// 返回false,两个不同的引用对象,因为不是case class
 ```
 
-#### Q5 Java和Scala 异步计算的区别？
+### Q5 Java和Scala 异步计算的区别？
 
 
 这里作者的意思是他大概也不清楚，请阅读这个 [really clean and simple answer on StackOverflow](https://link.jianshu.com/?t=http://stackoverflow.com/a/31368177/4398050)，我个人理解还不到位后续补上。
 
 
-#### Q6 unapply 和apply方法的区别， 以及各自使用场景？
+### Q6 unapply 和apply方法的区别， 以及各自使用场景？
 
 
 先讲一个概念——提取器，它实现了构造器相反的效果，构造器从给定的参数创建一个对象，然而提取器却从对象中提取出构造该对象的参数，scala标准库预定义了一些提取器，如上面提到的样本类中，会自动创建一个伴生对象（包含apply和unapply方法）。
@@ -98,7 +99,7 @@ println(c1 == c2 )// 返回false,两个不同的引用对象,因为不是case cl
 apply方法是为了自动实现样本类的对象，无需new关键字。
 
 
-#### Q7  伴生对象是什么？
+### Q7  伴生对象是什么？
 
 前面已经提到过，伴生对象就是与类名相同的对象，伴生对象可以访问类中的私有变量，类也可以访问伴生对象中的私有方法，类似于Java类中的静态方法。伴生对象必须和其对应的类定义在相同的源文件。
 
@@ -126,7 +127,7 @@ new MyClass(-1, "random").objectSecret // 无法访问
 new MyClass(-1, "random").classSecret // 无法访问
 ```
 
-#### Q8 Scala类型系统中Nil, Null, None, Nothing四个类型的区别？
+### Q8 Scala类型系统中Nil, Null, None, Nothing四个类型的区别？
 
 先看一幅Scala类型图
 
@@ -139,12 +140,12 @@ Nothing也是一个trait（特质），是所有类型Any（包括值类型和�
 Nil代表一个List空类型，等同List[Nothing]
 None是Option monad的空标识（深入了解请参考问题Q11）
 
-#### Q9 Unit类型是什么？
+### Q9 Unit类型是什么？
 
 Unit代表没有任何意义的值类型，类似于java中的void类型，他是anyval的子类型，仅有一个实例对象"( )"
 
 
-#### Q10 call-by-value和call-by-name求值策略的区别？
+### Q10 call-by-value和call-by-name求值策略的区别？
 
 （1）call-by-value是在调用函数**之前**计算；
 （2）call-by-name是在需要时计算
@@ -186,7 +187,7 @@ callByName(func())
 //2nd x: 42
 ```
 
-#### Q11 Option类型的定义和使用场景？
+### Q11 Option类型的定义和使用场景？
 
 在Java中，null是一个关键字，不是一个对象，当开发者希望返回一个空对象时，却返回了一个关键字，为了解决这个问题，Scala建议开发者返回值是空值时，使用Option类型，在Scala中null是Null的唯一对象，会引起异常，Option则可以避免。Option有两个子类型，Some和None（空值）
 
@@ -204,7 +205,7 @@ personOpt match {
 }
 ```
 
-#### Q12 yield如何工作？
+### Q12 yield如何工作？
 
 yield用于循环迭代中生成新值，yield是comprehensions的一部分，是多个操作（foreach, map, flatMap, filter or withFilter）的composition语法糖。（深入了解请参考问题Q14）
 
@@ -215,7 +216,7 @@ scala> for (i <- 1 to 5) yield i * 2
 res0: scala.collection.immutable.IndexedSeq[Int] = Vector(2, 4, 6, 8, 10)
 ```
 
-#### Q13 解释隐示参数的优先权
+### Q13 解释隐示参数的优先权
 
 在Scala中implicit的功能很强大。当编译器寻找implicits时，如果不注意隐式参数的优先权，可能会引起意外的错误。因此编译器会按顺序查找隐式关键字。顺序如下：
 （1）当前类声明的implicits ；
@@ -227,7 +228,7 @@ res0: scala.collection.immutable.IndexedSeq[Int] = Vector(2, 4, 6, 8, 10)
 一个参考文章：set of examples can be found here.
 个人推荐一篇文档：Where do Implicits Come From?
 
-#### Q14 comprehension（推导式）的语法糖是什么操作？
+### Q14 comprehension（推导式）的语法糖是什么操作？
 
 
 comprehension（推导式）是若干个操作组成的替代语法。如果不用yield关键字，comprehension（推导式）可以被forech操作替代，或者被map/flatMap，filter代替。
@@ -246,16 +247,16 @@ c1.flatMap(x => c2.flatMap(y => c3.withFilter(z => z > 0).map(z => {...})))
 
 更多例子 [More examples by Loïc Descotte.](https://link.jianshu.com/?t=https://gist.github.com/loicdescotte/4044169)
 
-#### Q15 Streams：当使用Scala Steams时需要考虑什么？Scala的Streams内部使用什么技术？
+### Q15 Streams：当使用Scala Steams时需要考虑什么？Scala的Streams内部使用什么技术？
 
 还没有理解，暂时不翻译，后续补上。
 
-#### Q16 什么是vaule class？
+### Q16 什么是vaule class？
 
 开发时经常遇到这个的问题，当你使用integer时，希望它代表一些东西，而不是全部东西，例如，一个integer代表年龄，另一个代表高度。由于上述原因，我们考虑包裹原始类型生成一个新的有意义的类型（如年龄类型和高度类型）。
 Value classes 允许开发者安全的增加一个新类型，避免运行时对象分配。有一些 必须进行分配的情况 and 限制,但是基本的思想是：在编译时，通过使用原始类型替换值类实例，删除对象分配。更多细节More details can be found on its SIP.
 
-#### Q17 Option ，Try 和 Either 三者的区别？
+### Q17 Option ，Try 和 Either 三者的区别？
 
 这三种monads允许我们显示函数没有按预期执行的计算结果。
 Option表示可选值，它的返回类型是Some（代表返回有效数据）或None（代表返回空值）。
@@ -275,7 +276,7 @@ def personAge(id: Int): Either[String, Int] = {
 ```
 
 
-#### Q18 什么是函数柯里化？
+### Q18 什么是函数柯里化？
 
 柯里化技术是一个接受多个参数的函数转化为接受其中几个参数的函数。经常被用来处理高阶函数。
 
@@ -288,7 +289,7 @@ scala> add2(3)
 res0: Int = 5
 ```
 
-#### Q19 什么是尾递归？
+### Q19 什么是尾递归？
 
 正常递归，每一次递归步骤，需要保存信息到堆栈里面，当递归步骤很多时，导致堆栈溢出。
 尾递归就是为了解决上述问题，在尾递归中所有的计算都是在递归之前调用，
@@ -329,7 +330,7 @@ tailSum(1, 14)
 tailSum(0, 15)
 15
 ```
-#### Q20 什么是高阶函数？
+### Q20 什么是高阶函数？
 
 高阶函数指能接受或者返回其他函数的函数，scala中的filter map flatMap函数都能接受其他函数作为参数。
 
@@ -833,8 +834,8 @@ c.toBuffer
 版权声明：本文为博主原创文章，转载请附上博文链接！
 
 
-### 特质（trait）
-#### 将trait作为接口使用
+## 特质（trait）
+### 将trait作为接口使用
 Scala中的Triat是一种特殊的概念
 
 首先我们可以将Trait作为接口来使用，此时的Triat就与Java中的接口非常类似
@@ -859,7 +860,7 @@ class Person(val name: String) extends HelloTrait with MakeFriendsTrait with Clo
 }
 ```
 
-#### 在Trait中定义具体方法
+### 在Trait中定义具体方法
 
 Scala中的Triat可以不是只定义抽象方法，还可以定义具体方法，此时trait更像是包含了通用工具方法的东西有一个专有的名词来形容这种情况，就是说trait的功能混入了类
 举例来说，trait中可以包含一些很多类都通用的功能方法，比如打印日志等等，spark中就使用了trait来定义了通用的日志打印方法
@@ -877,7 +878,7 @@ class Person(val name: String) extends Logger {
 }
 ```
 
-#### 在Trait中定义具体字段
+### 在Trait中定义具体字段
 Scala中的Triat可以定义具体field，此时继承trait的类就自动获得了trait中定义的field
 但是这种获取field的方式与继承class是不同的：如果是继承class获取的field，实际是定义在父类中的；而**继承trait获取的field，就直接被添加到了类中**
 
@@ -891,7 +892,7 @@ class Student(val name: String) extends Person {
 }
 ```
 
-#### 在Trait中定义抽象字段
+### 在Trait中定义抽象字段
 Scala中的Triat可以定义抽象field，而trait中的具体方法则可以基于抽象field来编写
 但是继承trait的类，则必须覆盖抽象field，提供具体的值
 
@@ -911,7 +912,7 @@ class Person(val name: String) extends SayHello {
 }
 ```
 
-#### 为实例混入trait
+### 为实例混入trait
 有时我们可以在创建类的对象时，指定该对象混入某个trait，这样，**就只有这个对象混入该trait的方法，而类的其他对象则没有**
 
 ```scala
@@ -931,7 +932,7 @@ val p2 = new Person("jack") with MyLogger
 p2.sayHello
 ```
 
-#### trait调用链
+### trait调用链
 Scala中支持让类继承多个trait后，依次调用多个trait中的同一个方法，只要让多个trait的同一个方法中，在**最后都执行super.方法**即可
 类中调用多个trait中都有的这个方法时，首先会从**最右边**的trait的方法开始执行，然后依次往左执行，形成一个调用链条
 这种特性非常强大，其实就相当于设计模式中的责任链模式的一种具体实现依赖
@@ -957,7 +958,7 @@ class Person(val name: String) extends SignatureValidHandler with DataValidHandl
 }
 ```
 
-#### 在trait中覆盖抽象方法
+### 在trait中覆盖抽象方法
 在trait中，是可以覆盖父trait的抽象方法的
 **但是覆盖时，如果使用了super.方法的代码，则无法通过编译**。因为super.方法就会去调用父trait的抽象方法，**此时子trait的该方法还是会被认为是抽象的**
 此时如果要通过编译，就得给子trait的方法加上abstract override修饰
@@ -972,7 +973,7 @@ trait MyLogger extends Logger {
 }
 ```
 
-#### 混合使用trait的具体方法和抽象方法
+### 混合使用trait的具体方法和抽象方法
 在trait中，可以混合使用具体方法和抽象方法
 可以让具体方法依赖于抽象方法，而抽象方法则放到继承trait的类中去实现
 这种trait其实就是设计模式中的模板设计模式的体现
@@ -990,7 +991,7 @@ class Person(val name: String) extends Valid {
 }
 ```
 
-#### trait的构造机制
+### trait的构造机制
 在Scala中，**trait是没有接收参数的构造函数的，这是trait与class的唯一区别**，但是如果需求就是要trait能够对field进行初始化，该怎么办呢？
 可以使用Scala中非常特殊的一种高级特性——**提前定义**，另外一种方式就是使用lazy value
 
@@ -1019,7 +1020,7 @@ class Person extends SayHello {
 }
 ```
 
-#### trait继承class
+### trait继承class
 在Scala中，trait也可以继承自class，此时这个class就会成为**所有继承该trait的类的父类**
 
 ```scala
@@ -1038,3 +1039,33 @@ class Person(val name: String) extends Logger {
   }
 }
 ```
+
+# 知识点
+## Any, AnyRef, AnyVal的区别
+
+### Any
+
+Any是abstract类，它是Scala类继承结构中最底层的。所有运行环境中的Scala类都是直接或间接继承自Any这个类，它就是其它语言（.Net，Java等）中的Object。
+
+### AnyVal
+
+AnyVal 所有值类型的基类， 它描述的是值，而不是代表一个对象。 
+它包括 9 个 AnyVal 子类型：
+Scala.Double 
+scala.Float 
+scala.Long 
+scala.Int 
+scala.Char 
+scala.Short 
+scala.Byte 
+上面是数字类型。
+
+scala.Unit 和 scala.Boolean 是非数字类型。
+
+Scala 2.10 之前， AnyVal 是一个密封的 trait，不能被继承。 从 Scala 2.10开始，我们可以自定义一个从 AnyVal继承下来的类型。
+
+对于这些基本类型的描述，和我们其它语言是相通的
+
+### AnyRef
+
+是所有引用类型的基类。除了值类型，所有类型都继承自AnyRef 。

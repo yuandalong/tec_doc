@@ -8,13 +8,6 @@
 * 还有Resourcemanager、Nodemanager、Journalnode、Zookeeper、Zkfc
 
 ---
-## HBase简单读写流程
-###  读
-找到要读数据的region所在的RegionServer，然后按照以下顺序进行读取：先去BlockCache读取，若BlockCache没有，则到Memstore读取，若Memstore中没有，则到HFile中去读。
-###  写
-找到要写数据的region所在的RegionServer，然后先将数据写到WAL(Write-Ahead Logging，预写日志系统)中，然后再将数据写到Memstore等待刷新，回复客户端写入完成。
-
----
 ## HBase的特点是什么
 
 1. hbase是一个分布式的基于列式存储的数据库，基于hadoop的HDFS存储，zookeeper进行管理。
@@ -200,7 +193,7 @@ bin/hbase org.apache.hadoop.hbase.mapreduce.Driver export 表名 路径
 ###  读
 找到要读取数据的region所在的RegionServer，然后按照以下顺序进行读取：先去BlockCache读取，若BlockCache没有，则到Memstore读取，若MemStore中没有，则到HFile中读取。
 ###  写
-找到要写入数据的region所在的RegionServer，然后将数据**先写到WAL**中，然后**再将数据写到MemStore**等待刷新，回复客户端写入完成。
+找到要写入数据的region所在的RegionServer，然后将数据**先写到WAL(Write-Ahead Logging，预写日志系统)**中，然后**再将数据写到MemStore**等待刷新，回复客户端写入完成。
 
 ---
 ## HBase和Hive的区别
@@ -361,3 +354,211 @@ Compact 的作用：
 HBase 中实现了两种 compaction 的方式：minor and major. 这两种 compaction 方式的区别是：
 * Minor 操作只用来做部分文件的合并操作以及包括 minVersion=0 并且设置 ttl 的过期版本清理，不做任何删除数据、多版本数据的清理工作。
 * Major 操作是对 Region 下的HStore下的所有StoreFile执行合并操作，最终的结果是整理合并出一个文件。
+
+----
+# hbase常用shell命令
+![](media/15819121689269.jpg)
+
+## 基本操作
+```shell
+hbase shell 进入hbase console命令
+whoami 查用户
+help查看基本命令集合
+help command 查看命令帮助
+list看库中所有表
+status 查看当前运行服务器状态
+version 版本查询
+exits '表名字' 判断表存在
+
+hbase shell中删除为 ctrl + backspace（单按删除键不好使）
+```
+
+## 建表
+create
+语法：
+```shell
+create <table>, {NAME => <family>, VERSIONS => <VERSIONS>}
+```
+
+具体命令
+
+```shell
+    hbase(main):004:0> exists 'test'
+    hbase(main):005:0> create 'test','cf'
+
+    hbase> create 't1', {NAME => 'f1', VERSIONS => 5}
+    hbase> create 't1', {NAME => 'f1'}, {NAME => 'f2'}, {NAME => 'f3'}
+    省略模式建立列族
+    hbase> create 't1', 'f1', 'f2', 'f3'
+    指定每个列族参数
+    hbase> create 't1', {NAME => 'f1', VERSIONS => 1, TTL => 2592000, BLOCKCACHE => true}
+    hbase> create 't1', 'f1', {SPLITS => ['10', '20', '30', '40']}
+    hbase> create 't1', 'f1', {SPLITS_FILE => 'splits.txt'}
+    hbase> # Optionally pre-split the table into NUMREGIONS, using
+    hbase> # SPLITALGO ("HexStringSplit", "UniformSplit" or classname)
+    hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
+    设置不同参数，提升表的读取性能。
+    create 'lmj_test',
+        {NAME => 'adn', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
+        {NAME => 'fixeddim', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
+        {NAME => 'social', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}
+    每个参数属性都有性能意义，通过合理化的设置可以提升表的性能
+     create 'lmj_test',
+        {NAME => 'adn', BLOOMFILTER => 'ROWCOL', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', COMPRESSION => 'SNAPPY', BLOCKCACHE => 'false'},
+        {NAME => 'fixeddim',BLOOMFILTER => 'ROWCOL', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', COMPRESSION => 'SNAPPY', BLOCKCACHE => 'false'},
+        {NAME => 'social',BLOOMFILTER => 'ROWCOL', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0',COMPRESSION => 'SNAPPY', BLOCKCACHE => 'false'}
+
+```
+
+## 查看表结构
+describe
+```
+    得出
+    {NAME => 'lmj_test', 
+    FAMILIES => 
+    [
+    {NAME => 'adn', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
+                {NAME => 'fixeddim', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
+                {NAME => 'social', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}
+            ]
+        }
+
+```
+
+## 清空表
+truncate
+
+```shell
+truncate ‘lmj_test’
+```
+
+## 删除表
+先disable后drop
+
+```shell
+分两步，首先disable 'lmj_test'，然后drop 'lmj_test'
+```
+
+## 修改表结构
+先disable后alter最后enable
+
+```shell
+        alter 't1', {NAME => 'f1'}, {NAME => 'f2', METHOD => 'delete'}
+        例如：修改表test1的cf的TTL为180天
+            hbase(main)> disable 'test1'
+            hbase(main)> alter 'test1',{NAME=>'body',TTL=>'15552000'},{NAME=>'meta', TTL=>'15552000'}
+            hbase(main)> enable 'test1'
+
+```
+
+## 对表中记录的操作（4种行操作）
+### put 增加一行
+```shell    
+        语法：put <table>,<rowkey>,<family:column>,<value>,<timestamp>
+        其中，timestamp可以系统默认，也可以自己设定，如
+
+         put 't1', 'r1', 'c1', 'value', ts1
+         put 'lmj_test','00001','adn:adn_3','aaa',1432483200000
+         put 'lmj_test','00001','fixeddim:appcategory_1','1',1432483200000
+         put 'lmj_test','00001','fixeddim:interest_15','100',1432483200000
+
+```
+### get查询对应数据(可以指定行、列族、列、版本)
+
+```shell
+    
+        get 'lmj_test','000000104257464',{TIMESTAMP=>1432483200000}
+```
+
+### delete 删除数据
+
+```shell
+        删除指定行中指定列：
+            delete <table>, <rowkey>,  <family:column> , <timestamp>(必须指定列名，删除其所有版本数据)
+            delete 'lmj_test','000000104257464','f1:col1'
+        删除整行数据（可不指定列名）：
+            deleteall <table>, <rowkey>,  <family:column> , <timestamp>
+            deleteall 'lmj_test','000000104257464'
+            
+```
+
+### scan 扫描全表，指定过滤条件，返回对应行
+
+```shell
+        scan 'lxw_hbase', {LIMIT => 1}
+            其他条件继续添加在大括号中
+    以上4个操作类是 org.apache.hadoop.hbase.client的子类，参考官网API查看详细信息
+```
+
+### count 统计表中记录数
+
+```shell
+      count 'lxw_hbase', {INTERVAL => 100, CACHE => 500}
+         #每100条显示一次，缓存区为500
+ 
+```
+
+## 表操作权限
+
+```shell
+    给用户分配对每个表的操作权限，有RWXCA五种，对应READ, WRITE, EXEC, CREATE, ADMIN
+    grant 'liu_mja','RW','lxw_hbase'    #分配给用户liu_mja表lxw_hbase的读写权限
+    还可以 查看权限
+        user_permission 'lxw_hbase'
+    收回权限
+        revoke 'liu_mja','lxw_hbase'
+
+```
+
+## 命名空间
+
+关系数据库系统中，命名空间namespace是表的逻辑分组,同一组中的表有类似的用途。
+以下引自：
+（http://blog.csdn.net/u010967382/article/details/37878701?utm_source=tuicool&utm_medium=referral）
+
+hbase的表也有命名空间的管理方式，命名空间的概念为即将到来的多租户特性打下基础：
+    配额管理（ Quota Management (HBASE-8410)）：限制一个namespace可以使用的资源，资源包括region和table等； 
+    命名空间安全管理（ Namespace Security Administration (HBASE-9206)）：提供了另一个层面的多租户安全管理； 
+    Region服务器组（Region server groups (HBASE-6721)）：一个命名空间或一张表，可以被固定到一组 regionservers上，从而保证了数据隔离性。 
+
+命名空间可以被创建、移除、修改。
+建表时可以指定命名空间，格式如下：<namespace>:<table>
+    
+```shell
+
+#Create a namespace
+create_namespace 'my_ns'
+
+#create my_table in my_ns namespace
+create 'my_ns:my_table', 'fam'
+
+#drop namespace
+drop_namespace 'my_ns'
+
+#alter namespace
+alter_namespace 'my_ns', {METHOD => 'set', 'PROPERTY_NAME' => 'PROPERTY_VALUE'}
+    
+```
+
+预定义的命名空间：
+    有两个系统内置的预定义命名空间
+    hbase   系统命名空间，用于包含hbase的内部表 
+    default 所有未指定命名空间的表都自动进入该命名空间
+    
+使用默认的命名空间
+    
+```shell
+ 
+        #namespace=default and table qualifier=bar
+        create 'bar', 'fam'
+        
+```    
+
+指定命名空间
+    
+```shell
+
+        #namespace=foo and table qualifier=bar
+        create 'foo:bar', 'fam'
+
+```

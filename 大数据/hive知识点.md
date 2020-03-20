@@ -119,7 +119,9 @@ hive --service metastore
     ```
 
 1. 启动hiveserver2
-
+    `hiveserver2`
+    
+1. 使用 beeline 测试
     ```shell
     beeline -u jdbc:hive2://localhost:10000
     ```
@@ -181,6 +183,10 @@ show databases;
 
 ```sql
 create table IF NOT EXISTS test (id int,name string)
+-- 指定分区键
+-- 注意分区键在hive分区表里是一个实际存在的字段，所以不能和其他字段名重复
+-- 这个和mysql等关系型数据库不一样
+PARTITIONED BY (date string)	
 -- 指定序列化和反序列化的规则
 ROW FORMAT DELIMITED
 -- 列分隔符
@@ -190,6 +196,9 @@ LINES TERMINATED BY '\n'
 -- 文件存储格式
 STORED AS TEXTFILE;
 ```
+
+#### 查看建表语句
+`show create table table_name`
 
 ### 插数据
 #### insert
@@ -236,6 +245,22 @@ LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename
 [insert](https://blog.csdn.net/Post_Yuan/article/details/62887619)
 [load data](https://blog.csdn.net/post_yuan/article/details/62883565)
 
+### 清空表
+#### 内部表
+
+```sql
+truncate table 表名; 
+```
+
+#### 外部表
+由于外部表不能直接删除，所以用shell命令执行
+```shell
+#!/bin/bash
+temp=$(date +%Y-%m-%d)
+temp2=$(date -d "-1 day" +%Y-%m-%d)
+hdfs dfs -rm -r /user/hive/test_table/partition_date=${temp}
+
+```
 ### 修改表结构
 
 ```sql
@@ -243,11 +268,12 @@ LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename
 ALTER TABLE name RENAME TO new_name
 -- 添加字段
 ALTER TABLE name ADD COLUMNS (col_spec[, col_spec ...])
--- 删除字段
+-- 删除字段 貌似不支持
 ALTER TABLE name DROP [COLUMN] column_name
 -- 修改字段 可修改字段名和字段类型(z)，只能单个字段修改
 ALTER TABLE name CHANGE column_name new_name new_type
--- 替换字段 可修改字段名和字段类型，可同时修改多个
+-- 替换字段 可修改字段名和字段类型，注意此时是替换整个schema，
+-- 而不是用第一个字段替换第二个，切记切记
 ALTER TABLE name REPLACE COLUMNS (col_spec[, col_spec ...])
 ```
 
@@ -269,6 +295,13 @@ dept STRING COMMENT 'Department name');
 ALTER TABLE employee RENAME TO emp;
 ```
 
+### 查看表结构
+#### 查看字段类型
+`desc table_name`
+
+#### 查看完成表结构信息
+`desc formatted table_name`
+
 ### 分区
 Hive组织表到分区。它是将一个表到基于分区列，如日期，城市和部门的值相关方式。使用分区，很容易对数据进行部分查询。
 
@@ -285,10 +318,14 @@ partition_spec:
 
 #### 添加分区
 
+内部表不支持建表后添加和修改分区，需要建表的时候直接通过PARTITION BY语句指定
+
+
 ```sql
+--外部表语法
 ALTER TABLE employee
-> ADD PARTITION (year=’2012’)
-> location '/2012/part2012';
+ADD PARTITION (year=’2012’)
+location '/2012/part2012';
 ```
 
 #### 修改分区
@@ -303,6 +340,30 @@ RENAME TO PARTITION (Yoj=’1203’);
 ```sql
 ALTER TABLE employee DROP [IF EXISTS]
 PARTITION (year=’2012’);
+```
+
+#### 插入数据到分区
+
+```sql
+--将t1表的数据加载到分区为day=2的表t2中  
+INSERT OVERWRITE TABLE t2 PARTITION (day=2) SELECT * FROM t1;
+--插入多个分区，数据源遍历多遍，效率低
+INSERT OVERWRITE TABLE t2 PARTITION (day=2) SELECT * FROM t1;  
+INSERT OVERWRITE TABLE t2 PARTITION (day=3) SELECT * FROM t1; 
+--插入过个分区，数据源遍历一遍，效率高
+FROM t1    
+INSERT OVERWRITE TABLE t2 PARTITION(day=2) SELECT id WHERE day=2      
+INSERT OVERWRITE TABLE t2 PARTITION(day=3) SELECT id WHERE day=3   
+INSERT OVERWRITE TABLE t4 SELECT id WHERE day=4
+--动态插入分区
+--Hive是支持动态分区插入的。如果不支持的话，可以设置
+--hive.exec.dynamic.partition=true;打开
+set  hive.exec.dynamic.partition=true;
+set  hive.exec.dynamic.partition.mode=nonstrict;
+set  hive.exec.max.dynamic.partitions.pernode=1000;
+--动态分区字段一定要放在所有静态字段的后面，这里业务字段在前，最后 a.province, 
+--a.city作为动态分区字段会被赋到PARTITION (province, city)中  
+INSERT OVERWRITE TABLE t2 PARTITION (province, city) SELECT ....... , a.province, a.city FROM a;
 ```
 
 ### 视图
@@ -323,6 +384,20 @@ WHERE salary>30000;
 
 #### 删除视图
 `DROP VIEW view_name`
+
+### 临时表
+
+Hive 0.14.0及以上支持
+表只对当前session有效，session退出后，表自动删除。
+
+语法：
+
+`CREATE TEMPORARY TABLE ...`
+注意点：
+1. 如果创建的临时表表名已存在，那么当前session引用到该表名时实际用的是临时表，只有drop或rename临时表名才能使用原始表
+2. 临时表限制：不支持分区字段和创建索引
+
+从Hive1.1开始临时表可以存储在内存或SSD，使用hive.exec.temporary.table.storage参数进行配置，该参数有三种取值：memory、ssd、default。
 
 ### 索引
 #### 创建索引
@@ -355,6 +430,10 @@ AS 'org.apache.hadoop.hive.ql.index.compact.CompactIndexHandler';
 DROP INDEX index_salary ON employee
 ```
 
+#### case when
+语法:
+`case when sale_type = '4' then '精选' else null end as sale_type`
+
 ### top N 查询
 使用row_number结合partition by函数
 eg:
@@ -368,6 +447,141 @@ by num desc) number from test_json) a where a.number <=2;
 - rank 在这里是别名，可任意
 - partition by：类似于Hive的建表，分区的意思。
 - order by ： 排序，默认是升序，加desc降序。
+
+### 多行转一行
+1. 数据文件及内容
+    student.txt
+    aoming|english|92.0
+    xia|chinese|98.0
+    xia|math|89.5
+    huahua|chinese|80.0
+    huahua|math|89.5
+
+1. 创建表studnet：
+
+    ```sql
+    create table student(name string,subject string,score decimal(4,1))
+    row format delimited
+    fields terminated by '|';
+    ```
+
+1. 导入数据：
+
+    ```sql
+    load data local inpath '/home/hadoop/hivetestdata/student.txt' into table student;
+    ```
+
+1. 列转为行演示：
+
+    ```sql
+    select name,concat_ws(',',collect_set(subject)) from student group by name;
+    ```
+   ![](media/15713054528025.jpg)
+    
+    ```sql
+    select name,concat_ws(',',collect_set(concat(subject,'=',score))) 
+    from student group by name;
+    ```
+    ![](media/15713054907101.jpg)
+
+
+#### concat
+拼接字符串
+#### concat_ws
+concat的特殊形式
+CONCAT_WS() 代表 CONCAT With Separator
+语法：
+CONCAT_WS(separator,str1,str2,…)
+第一个参数是其它参数的分隔符
+可以对array类型的字段进行拼接，此时会把array的各个元素按分隔符拼接成一个字符串
+#### collect_set
+多行合并成一行，并去重
+#### collect_list
+多行合并成一行，不去重
+
+### 一行转多行
+```sql
+explode(split(a.usertags, ',')) 
+```
+#### explode
+集合转多行
+explode(ARRAY) 列表中的每个元素生成一行
+explode(MAP) map中每个key-value对，生成一行，key为一列，value为一列
+
+#### split
+使用特殊字符将指定字段切分成集合
+
+#### lateral view
+
+lateral view(侧视图)的意义是配合explode（或者其他的UDTF）使用的
+explode函数有几个限制：
+- No other expressions are allowed in SELECT
+    `SELECT pageid, explode(adid_list) AS myCol... is not supported`
+- UDTF's can't be nested  
+    `SELECT explode(explode(adid_list)) AS myCol... is not supported`
+- GROUP BY / CLUSTER BY / DISTRIBUTE BY / SORT BY is not supported
+    `SELECT explode(adid_list) AS myCol ... GROUP BY myCol is not supported`
+    
+此时使用lateral view可以突破这些限制
+
+用法：
+```sql
+select goods_id2,sale_info from explode_lateral_view LATERAL VIEW 
+explode(split(goods_id,','))goods as goods_id2;
+``` 
+其中LATERAL VIEW explode(split(goods_id,','))goods相当于一个虚拟表，与原表explode_lateral_view笛卡尔积关联。
+
+也可以多重使用
+```sql
+select goods_id2,sale_info,area2
+from explode_lateral_view 
+LATERAL VIEW explode(split(goods_id,','))goods as goods_id2 
+LATERAL VIEW explode(split(area,','))area as area2;
+```
+也是三个表笛卡尔积的结果
+
+
+ 
+
+    
+## 特殊关系运算符
+|运算符|操作|描述|
+| --- | --- | --- |
+|A RLIKE B|字符串|NULL，如果A或B为NULL；TRUE，<br>如果A任何子字符串匹配Java正则表达式B；否则FALSE。|
+|A REGEXP B|字符串|等同于RLIKE.|
+
+
+## hive内置函数
+
+|返回类型| 签名| 描述|
+| --- | --- | --- |
+| BIGINT| round(double a)| 返回BIGINT最近的double值。|
+| BIGINT| floor(double a)| 返回最大BIGINT值等于或小于double。|
+| BIGINT| ceil(double a)| 它返回最小BIGINT值等于或大于double。|
+| double| rand(), rand(int seed)| 它返回一个随机数，从行改变到行。|
+| string| concat(string A, string B,...)| 它返回从A后串联B产生的字符串|
+| string| substr(string A, int start)| 它返回一个起始，从起始位置的子字符串，直到A.结束|
+| string| substr(string A, int start, int length)| 返回从给定长度的起始start位置开始的字符串。|
+| string| upper(string A)| 它返回从转换的所有字符为大写产生的字符串。|
+| string| ucase(string A)| 和上面的一样|
+| string| lower(string A)| 它返回转换B的所有字符为小写产生的字符串。|
+| string| lcase(string A)| 和上面的一样|
+| string| trim(string A)| 它返回字符串从A.两端修剪空格的结果|
+| string| ltrim(string A)| 它返回A从一开始修整空格产生的字符串(左手侧)|
+| string| rtrim(string A)| rtrim(string A)，它返回A从结束修整空格产生的<br>字符串(右侧)|
+| string| regexp_replace(string A, string B, string C)| 返回从替换所<br>有子在B结果配合C.在Java正则表达式语法的字符串|
+| int| size(Map<K.V>)| 它返回在映射类型的元素的数量。|
+| int| size(Array<T>)| 它返回在数组类型元素的数量。|
+| value of <type>| cast(<expr> as <type>)| 它把表达式的结果expr<类型>如cast('1'作为BIGINT)<br>代表整体转换为字符串'1'。如果转换不成功，返回的是NULL。|
+| string| from_unixtime(int unixtime)| 转换的秒数从Unix纪元(1970-01-0100:00:00 UTC)代表那一刻，<br>在当前系统时区的时间戳字符的串格式："1970-01-01 00:00:00"|
+| string| to_date(string timestamp)| 返回一个字符串时间戳的日期部分：<br>to_date("1970-01-01 00:00:00") = "1970-01-01"|
+| int| year(string date)| 返回年份部分的日期或时间戳字符串：<br>year("1970-01-01 00:00:00") = 1970, year("1970-01-01") = 1970|
+| int| month(string date)| 返回日期或时间戳记字符串月份部分：<br>month("1970-11-01 00:00:00") = 11, month("1970-11-01") = 11|
+| int| day(string date)| 返回日期或时间戳记字符串当天部分：<br>day("1970-11-01 00:00:00") = 1, day("1970-11-01") = 1|
+| string| get_json_object(string json_string, string path)| 提取从基于指定的JSON路径的JSON字符串JSON对象，<br>并返回提取的JSON字符串的JSON对象。<br>如果输入的JSON字符串无效，返回NULL。|
+
+
+
 
 # 加载json数据
 ## 整条数据是json格式
@@ -491,6 +705,36 @@ UNIONTYPE<int, double, array<string>, struct<a:int,b:string>>
 
 # java操作hive
 https://www.cnblogs.com/takemybreathaway/articles/9750175.html
+
+# spark写hive
+https://blog.csdn.net/a2639491403/article/details/80044121
+大体思路是先写入临时表，然后执行insert into table select * from tmp
+
+# 随机抽样
+在大规模数据量的数据分析及建模任务中，往往针对全量数据进行挖掘分析时会十分耗时和占用集群资源，因此一般情况下只需要抽取一小部分数据进行分析及建模操作。Hive提供了数据取样（SAMPLING）的功能，能够根据一定的规则进行数据抽样，目前支持数据块抽样，分桶抽样和随机抽样，具体如下所示：
+
+## 数据块抽样（tablesample()函数） 
+1. tablesample(n percent) 根据hive表数据的大小按比例抽取数据，并保存到新的hive表中。如：抽取原hive表中10%的数据 
+    **注意** 测试过程中发现，select语句不能带where条件且不支持子查询，可通过新建中间表或使用随机抽样解决） 
+`create table xxx_new as select * from xxx tablesample(10 percent) `
+2. tablesample(n M) 指定抽样数据的大小，单位为M。 
+3. tablesample(n rows) 指定抽样数据的行数，其中n代表每个map任务均取n行数据，map数量可通过hive表的简单查询语句确认（关键词：number of mappers: x)
+
+## 分桶抽样 
+hive中分桶其实就是根据某一个字段Hash取模，放入指定数据的桶中，比如将表table_1按照ID分成100个桶，其算法是hash(id) % 100，这样，hash(id) % 100 = 0的数据被放到第一个桶中，hash(id) % 100 = 1的记录被放到第二个桶中。创建分桶表的关键语句为：CLUSTER BY语句。 
+分桶抽样语法： 
+`TABLESAMPLE (BUCKET x OUT OF y [ON colname]) `
+其中x是要抽样的桶编号，桶编号从1开始，colname表示抽样的列，y表示桶的数量。 
+例如：将表随机分成10组，抽取其中的第一个桶的数据 
+`select * from table_01 tablesample(bucket 1 out of 10 on rand()) where p_day=20190508 limit 10;
+`
+## 随机抽样（rand()函数） 
+1）使用rand()函数进行随机抽样，limit关键字限制抽样返回的数据，其中rand函数前的distribute和sort关键字可以保证数据在mapper和reducer阶段是随机分布的，案例如下： 
+`select * from table_name where col=xxx distribute by rand() sort by rand() limit num; `
+2）使用order 关键词 
+案例如下： 
+`select * from table_name where col=xxx order by rand() limit num; `
+经测试对比，千万级数据中进行随机抽样 order by方式**耗时更长**，大约多30秒左右。
 
 # 常见错误
 

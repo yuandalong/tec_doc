@@ -15,6 +15,25 @@
 或者
 `show collections;`
 
+# 创建表
+`db.createCollection(name, options)`
+参数说明：
+* name: 要创建的集合名称
+* options: 可选参数, 指定有关内存大小及索引的选项
+
+options 可以是如下参数：
+![-w835](media/15839131475534.jpg)
+
+
+```shell
+# 不带参数
+db.createCollection("runoob")
+# 带参数
+db.createCollection("mycol", { capped : true, autoIndexId : true, size : 6142800, max : 10000 } )
+```
+
+不是必须的，mongo插入数据时当表不存在会自动创建
+
 # 插入数据
 `db.tableName.save({"a":"b"})`
 
@@ -25,7 +44,7 @@
 ## 查指定字段
 `db.tableName.find({"columnName":"value"});`
 
-## 查大于
+## 查大于、小于、不等于
 
 ```shell
 #$gt表示>，lt表示<，gte表示>=，lte表示<=，ne表示!=
@@ -47,6 +66,9 @@ db.tableName.find({"columnName" : {$gt: 22}});
 ## 查指定条数
 
 `db.tableName.find().limit(5);//查前五条`
+
+## 查指定集合个数的数据
+`db.tableName.find({"columnName":{$size:3}});//columnName是数组，查columnName数组元素个数是3的数据`
 
 ## or
 `db.tableName.find({$or:[{"columnName":"value"},{"cloumnName2":"value2"}]});//注意or条件是json数组`

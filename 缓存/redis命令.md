@@ -9,7 +9,7 @@ redis-cli keys '123*' |xargs redis-cli del
 zrange key 0 -1
 
 ## 根据分值查询
-zrangbyscore key 0 100
+zrangebyscore key 0 100
 
 ## 查key的索引，可用于判断是否存在
 zrank key member

@@ -1,4 +1,5 @@
-01 交换变量
+# 编程技巧
+## 01 交换变量
 
 ```python
 >>>a=3
@@ -17,7 +18,7 @@
 >>>ptint(b)>>>5
 ```
 
-02 字典推导(Dictionary comprehensions)和集合推导(Set comprehensions)
+## 02 字典推导(Dictionary comprehensions)和集合推导(Set comprehensions)
 
 大多数的Python程序员都知道且使用过列表推导(list comprehensions)。如果你对list comprehensions概念不是很熟悉——一个list comprehension就是一个更简短、简洁的创建一个list的方法。
 
@@ -65,7 +66,7 @@ set([1, 2, 3, 4])
 
 而不需要使用内置函数set()。
 
-03 计数时使用Counter计数对象。
+## 03 计数时使用Counter计数对象。
 
 这听起来显而易见，但经常被人忘记。对于大多数程序员来说，数一个东西是一项很常见的任务，而且在大多数情况下并不是很有挑战性的事情——这里有几种方法能更简单的完成这种任务。
 
@@ -83,7 +84,7 @@ Counter({ l : 3,  o : 2,    : 1,  e : 1,  d : 1,  h : 1,  r : 1,  w : 1})
 [( l , 3), ( o , 2)]
 ```
 
-04 漂亮的打印出JSON
+## 04 漂亮的打印出JSON
 
 JSON是一种非常好的数据序列化的形式，被如今的各种API和web service大量的使用。使用python内置的json处理，可以使JSON串具有一定的可读性，但当遇到大型数据时，它表现成一个很长的、连续的一行时，人的肉眼就很难观看了。
 
@@ -122,7 +123,7 @@ JSON是一种非常好的数据序列化的形式，被如今的各种API和web 
 
 同样，使用内置的pprint模块，也可以让其它任何东西打印输出的更漂亮。
 
-05 解决FizzBuzz
+## 05 解决FizzBuzz
 
 前段时间Jeff Atwood 推广了一个简单的编程练习叫FizzBuzz，问题引用如下：
 
@@ -136,7 +137,7 @@ for x in range(1,101):
     print"fizz"[x%3*len( fizz )::]+"buzz"[x%5*len( buzz )::] or x
 ```
 
-06 if 语句在行内
+## 06 if 语句在行内
 
 
 ```python
@@ -144,7 +145,7 @@ print "Hello" if True else "World"
 >>> Hello
 ```
 
-07 连接
+## 07 连接
 
 下面的最后一种方式在绑定两个不同类型的对象时显得很cool。
 
@@ -167,7 +168,7 @@ print nfc, 1
 >>> [ Packers ,  49ers ] 1
 ```
 
-08 数值比较
+## 08 数值比较
 
 这是我见过诸多语言中很少有的如此棒的简便法
 
@@ -182,7 +183,7 @@ if 1 < x > 0:
 >>> 2
 ```
 
-09 同时迭代两个列表
+## 09 同时迭代两个列表
 
 
 ```python
@@ -194,7 +195,7 @@ for teama, teamb in zip(nfc, afc):
 >>> 49ers vs. Patriots
 ```
 
-10 带索引的列表迭代
+## 10 带索引的列表迭代
 
 
 ```python
@@ -207,7 +208,7 @@ for index, team in enumerate(teams):
 >>> 3 Patriots
 ```
 
-11 列表推导式
+## 11 列表推导式
 
 已知一个列表，我们可以刷选出偶数列表方法：
 
@@ -228,7 +229,7 @@ numbers = [1,2,3,4,5,6]
 even = [number for number in numbers if number%2 == 0]
 ```
 
-12 字典推导
+## 12 字典推导
 
 和列表推导类似，字典可以做同样的工作：
 
@@ -238,7 +239,7 @@ print {key: value for value, key in enumerate(teams)}
 >>> { 49ers : 1,  Ravens : 2,  Patriots : 3,  Packers : 0}
 ```
 
-13 初始化列表的值
+## 13 初始化列表的值
 
 ```python
 items = [0]*3
@@ -246,7 +247,7 @@ print items
 >>> [0,0,0]
 
 ```
-14 列表转换为字符串
+## 14 列表转换为字符串
 
 ```python
 teams = ["Packers", "49ers", "Ravens", "Patriots"]
@@ -254,7 +255,7 @@ print ", ".join(teams)
 >>>  Packers, 49ers, Ravens, Patriots 
 ```
 
-15 从字典中获取元素
+## 15 从字典中获取元素
 
 我承认try/except代码并不雅致，不过这里有一种简单方法，尝试在字典中找key，如果没有找到对应的alue将用第二个参数设为其变量值。
 
@@ -274,7 +275,7 @@ data = { user : 1,  name :  Max ,  three : 4}
 is_admin = data.get( admin , False)
 
 ```
-16 获取列表的子集
+## 16 获取列表的子集
 
 有时，你只需要列表中的部分元素，这里是一些获取列表子集的方法。
 
@@ -306,7 +307,7 @@ print Counter("hello")
 >>> Counter({ l : 2,  h : 1,  e : 1,  o : 1})
 ```
 
-17 迭代工具
+## 17 迭代工具
 
 和collections库一样，还有一个库叫itertools，对某些问题真能高效地解决。其中一个用例是查找所有组合，他能告诉你在一个组中元素的所有不能的组合方式
 ```python
@@ -321,7 +322,7 @@ for game in combinations(teams, 2):
 >>> ( 49ers ,  Patriots )
 >>> ( Ravens ,  Patriots )
 ```
-18 False == True
+## 18 False == True
 
 比起实用技术来说这是一个很有趣的事，在python中，True和False是全局变量，因此：
 
@@ -333,3 +334,58 @@ else:
    print "World"
 >>> Hello
 ```
+
+# ModuleNotFoundError: No module named 解决
+python中，每个py文件被称之为模块，每个具有__init__.py文件的目录被称为包。只要模块或者包所在的目录在sys.path中，就可以使用import 模块或import 包来使用。 
+  
+如果想使用非当前模块中的代码，需要使用Import，这个大家都知道。 
+如果你要使用的模块（py文件）和当前模块在同一目录，只要import相应的文件名就好，比如在a.py中使用b.py： 
+import b 
+但是如果要import一个不同目录的文件(例如b.py)该怎么做呢？ 
+## 临时方案
+```python
+import sys
+sys.path.append('包路径')
+```
+适用于临时包，执行一次就完事了的脚本
+
+## 永久方案
+1. 将自己做的py文件放到 site_packages 目录下
+2. 使用pth文件，在 site-packages 文件中创建 .pth文件，将模块的路径写进去，一行一个路径
+3. 使用PYTHONPATH环境变量，在这个环境变量中输入相关的路径，不同的路径之间用逗号（英文的！)分开
+
+# python -c 执行单行命令
+执行单行命令
+当想执行一个简单的python命令，即不想写脚本文件，又不想进python环境时，可以使用-c参数
+```shell
+python3 -c "import sys;print('当前的python是:'+sys.prefix);print ('\n'.join(sys.path))"
+```
+
+# 提高python运行速度的技巧
+## 如何获取python运行时间
+1. Linux time命令 
+2. cprofile
+    
+    ```shell
+    python -m cProfile -s time xxx.py
+    ```
+3. 使用python内置的time函数
+    time.perf_counter() 返回绝对值，包括python不运行等待cpu时钟的时间，可能会受到机器负载的影响
+    time.process_time() 返回用户时间，不包括系统时间，只是进程的时间
+
+## python提速技巧
+1. 使用内置数据类型
+2. 使用lru_cache缓存数据  
+    `@functools.lru_cache(maxsize=12)`
+3. 使用局部变量 这与在每个作用域内查找变量的速度有关
+	局部变量 最快
+	类级属性 次之
+	全局变量 最慢
+4. 使用函数
+	与第三点有关，如果只是将代码放入文件中而不是函数中，那么由于全局变量的关系，速度会慢很多，只要将整个代码放入main函数中并调用一次，就能加快代码
+5. 不要访问属性
+	点操作符. 使用_getattribute_会触发字典查找
+6. 提防字符串
+	在循环中运行模数（%s）或.format（）会变慢
+	应该使用f-string ,是最易懂、简洁、快速的方法
+	生成器并没有更快，因为会延时加载，这里节省的是**内存**而不是时间
