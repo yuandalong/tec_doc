@@ -145,6 +145,19 @@
 
 ---
 
+## demo
+
+```shell
+#查topic信息
+./kafka-topics.sh --zookeeper 10.10.10.8:2181 --topic feed-media-result --describe
+#查消费者信息
+./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group test-crawletl1-20200318_1
+#查topic offset最小值
+./kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic feed-media-result --time -2
+#查topic offset最大值
+./kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic feed-media-result --time -1
+```
+
 # kafka技能图
 
 ![kafka技能图](media/kafka%E6%8A%80%E8%83%BD%E5%9B%BE.jpeg)

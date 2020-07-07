@@ -68,6 +68,32 @@ application_1438998625140_1703	MAC_STATUS	 MAPREDUCE	  hduser default ACCEPTED U
 |-help	|帮助|
 |-nodeAddress `<NodeAddress>`|节点地址的格式：nodename:port （端口是配置文件<br>中:yarn.nodemanager.webapp.address参数指定）|
 
+#### Log aggregation has not completed or is not enabled.处理
+解决方法：yarn-site.xml
+
+```xml
+<!--log-->
+ <property>
+        <name>yarn.log-aggregation-enable</name>
+        <value>true</value>
+ </property>
+ <property>
+        <name>yarn.nodemanager.log-aggregation.roll-monitoring-interval-seconds</name>
+        <value>3600</value>
+ </property>
+ <property>
+        <name>yarn.nodemanager.remote-app-log-dir</name>
+        <value>/tmp/logs</value>
+ </property>
+
+```
+
+sbin/stop-all.sh
+sbin/start-all.sh
+
+还有一种可能是hdfs上日志目录有问题
+
+
 ### node
 
 使用: yarn node [options]

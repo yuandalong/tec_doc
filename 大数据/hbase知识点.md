@@ -356,6 +356,7 @@ HBase 中实现了两种 compaction 的方式：minor and major. 这两种 compa
 * Major 操作是对 Region 下的HStore下的所有StoreFile执行合并操作，最终的结果是整理合并出一个文件。
 
 ----
+
 # hbase常用shell命令
 ![](media/15819121689269.jpg)
 
@@ -388,21 +389,21 @@ create <table>, {NAME => <family>, VERSIONS => <VERSIONS>}
 
     hbase> create 't1', {NAME => 'f1', VERSIONS => 5}
     hbase> create 't1', {NAME => 'f1'}, {NAME => 'f2'}, {NAME => 'f3'}
-    省略模式建立列族
+    # 省略模式建立列族
     hbase> create 't1', 'f1', 'f2', 'f3'
-    指定每个列族参数
+    # 指定每个列族参数
     hbase> create 't1', {NAME => 'f1', VERSIONS => 1, TTL => 2592000, BLOCKCACHE => true}
     hbase> create 't1', 'f1', {SPLITS => ['10', '20', '30', '40']}
     hbase> create 't1', 'f1', {SPLITS_FILE => 'splits.txt'}
     hbase> # Optionally pre-split the table into NUMREGIONS, using
     hbase> # SPLITALGO ("HexStringSplit", "UniformSplit" or classname)
     hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
-    设置不同参数，提升表的读取性能。
+    # 设置不同参数，提升表的读取性能。
     create 'lmj_test',
         {NAME => 'adn', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
         {NAME => 'fixeddim', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}, 
         {NAME => 'social', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROWCOL', REPLICATION_SCOPE => '0', COMPRESSION => 'SNAPPY', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', ENCODE_ON_DISK => 'true', IN_MEMORY => 'false', BLOCKCACHE => 'false'}
-    每个参数属性都有性能意义，通过合理化的设置可以提升表的性能
+    # 每个参数属性都有性能意义，通过合理化的设置可以提升表的性能
      create 'lmj_test',
         {NAME => 'adn', BLOOMFILTER => 'ROWCOL', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', COMPRESSION => 'SNAPPY', BLOCKCACHE => 'false'},
         {NAME => 'fixeddim',BLOOMFILTER => 'ROWCOL', VERSIONS => '1', TTL => '15768000', MIN_VERSIONS => '0', COMPRESSION => 'SNAPPY', BLOCKCACHE => 'false'},
@@ -412,8 +413,9 @@ create <table>, {NAME => <family>, VERSIONS => <VERSIONS>}
 
 ## 查看表结构
 describe
-```
-    得出
+可简写成desc
+```shell
+    # 得出
     {NAME => 'lmj_test', 
     FAMILIES => 
     [
@@ -466,8 +468,7 @@ truncate ‘lmj_test’
 ### get查询对应数据(可以指定行、列族、列、版本)
 
 ```shell
-    
-        get 'lmj_test','000000104257464',{TIMESTAMP=>1432483200000}
+        get 'lmj_test','000000104257464',{COLUMN=>['cf1','cf2:column1'],VERSION=>2,TIMESTAMP=>1432483200000}
 ```
 
 ### delete 删除数据
@@ -562,3 +563,28 @@ alter_namespace 'my_ns', {METHOD => 'set', 'PROPERTY_NAME' => 'PROPERTY_VALUE'}
         create 'foo:bar', 'fam'
 
 ```
+
+## TTL（设置数据过期时间）
+### 创建表时候指定
+
+```shell
+create 't_task_log',{NAME => 'f', TTL=>'86400'}
+```
+
+### 在已有表的基础上指定
+
+```shell
+disable "t_task_log"  #禁用表
+alter "t_task_log",NAME=>'data',TTL=>'86400' #设置TTL值，作用于列族data
+enable  "t_task_log"  #恢复表
+```
+
+ TTL的更新超时时间是指：该列**最后更新**的时间，到超时时间的限制，而不是第一次创建，到超时时间
+ 
+### TTL的粒度
+早期版本控制粒度是column family； 新版本因为Cell可以支持tag了，所以可以在cell级别设置TTL了。（待考证)
+
+Cell的TTL与Column family的TTL区别：
+
+* Column family的TTL以秒为单位，cell的TTL以毫秒为单位
+* 如果有有cell级别的TTL，则cell的TTL override CF的TTL； 但是不能超出CF级别的TTL

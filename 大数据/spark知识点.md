@@ -1,3 +1,4 @@
+# 面试题
 ### Spark中Work的主要工作是什么？
 主要功能：管理当前节点内存，CPU的使用状况，接收master分配过来的资源指令，通过ExecutorRunner启动程序分配任务，worker就类似于包工头，管理分配新进程，做计算的服务，相当于process服务。  
 需要注意的是：
@@ -425,3 +426,282 @@ Spark的迭代计算都是在内存中进行的，API中提供了大量的RDD操
 修改Kafka的ack参数，当ack=1时，master确认收到消息就算投递成功。ack=0时，不需要收到消息便算成功，高效不准确。sck=all，master和server都要受到消息才算成功，准确不高效。
 
 StreamingContext.stop会把关联的SparkContext对象也停止，如果不想把SparkContext对象也停止的话可以把StremingContext.stop的可选参数stopSparkContext设为flase。一个SparkContext对象可以和多个streamingcontext对象关联。只要对前一个stremingcontext.stop(stopsparkcontext=false),然后再创建新的stremingcontext对象就可以了。 
+
+# 实际应用遇到的问题
+
+## stream实现多batch同时执行
+
+是否同时执行主要由两个参数控制：
+* spark.scheduler.mode(FIFO/FAIR)
+* spark.streaming.concurrentJobs
+
+### spark.scheduler.mode
+
+mode控制batch的执行策略
+FIFO：先进先出
+FAIR：公平调度，支持在调度池中为任务进行分组，不同的调度池权重不同，任务可以按照权重来决定执行顺序
+
+### spark.streaming.concurrentJobs
+concurrentJobs 其实决定了向Spark Core提交Job的并行度。提交一个Job，必须等这个执行完了，才会提交第二个。假设我们把它设置为2，则会并发的把Job提交给Spark Core，Spark 有自己的机制决定如何运行这两个Job,这个机制其实就是FIFO或者FAIR（决定了资源的分配规则）。默认是FIFO,也就是先进先出，你把concurrentJobs设置为2，但是如果底层是FIFO,那么会优先执行先提交的Job,虽然如此，**如果资源够两个job运行**，还是会并行运行两个Job。
+
+## WARN yarn.Client: Neither spark.yarn.jars nor spark.yarn.archive is set, falling back to uploading libraries under SPARK_HOME.
+
+将spark的jar包放到hdfs上并配置spark.yarn.jars
+
+
+```shell
+hdfs dfs -mkdir /hadoop
+hdfs dfs -mkdir /hadoop/spark_jars
+hdfs dfs -put /opt/spark-2.2.1-bin-hadoop2.7/jars/* /hadoop/spark_jars
+cd /opt/spark-2.2.1-bin-hadoop2.7/conf/
+cp spark-defaults.conf.template spark-defaults.conf
+vim spark-defaults.conf
+# 在最下面添加：
+spark.yarn.jars hdfs://192.168.44.128:8888/hadoop/spark_jars/*
+```
+
+## spark on yarn配置
+
+1. spark-env.sh设置HADOOP_CONF_DIR
+
+    ```shell
+    export HADOOP_CONF_DIR=/etc/hadoop/conf
+    ```
+
+1. spark-defaults.conf设置spark.yarn.jars
+参考上面的Neither spark.yarn.jars nor spark.yarn.archive is set, falling back to uploading libraries under SPARK_HOME的处理办法
+
+## logback替换log4j
+
+1. 将jars文件夹下apache-log4j-extras-1.2.17.jar，commons-logging-1.1.3.jar, log4j-1.2.17.jar, slf4j-log4j12-1.7.16.jar替换成log4j-over-slf4j-1.7.23.jar,logback-access-1.2.1.jar, logback-classic-1.2.1.jar, logback-core-1.2.1.jar。
+
+2. 将conf文件夹下的log4j.properties.template通过 [log4j.properties Translator](http://logback.qos.ch/translator/) 转换成logback.xml即可
+
+3. 运行./run-example SparkPi 10看实际效果
+
+4. spark应用启动脚本用-Dlogback.configurationFile=xxx来替换-Dlog4j.configuration=xxx
+
+
+# 配置参数
+
+## spark on yarn常用属性介绍
+
+| 属性名 | 默认值 | 属性说明 |
+| --- | --- | --- |
+|spark.yarn.am.memory	|512m	|在客户端模式（client mode）下，yarn应用master使用的内存数。在集群模式（cluster mode）下，使用spark.driver.memory代替。|
+|spark.driver.cores	|1	|在集群模式（cluster mode）下，driver程序使用的核数。在集群模式（cluster mode）下，driver程序和master运行在同一个jvm中，所以master控制这个核数。在客户端模式（client mode）下，使用spark.yarn.am.cores控制master使用的核。|
+|spark.yarn.am.cores	|1	|在客户端模式（client mode）下，yarn应用的master使用的核数。在集群模式下，使用spark.driver.cores代替。|
+|spark.yarn.am.waitTime	|100ms|	在集群模式（cluster mode）下，yarn应用master等待SparkContext初始化的时间。在客户端模式（client mode）下，master等待driver连接到它的时间。|
+|spark.yarn.submit.file.replication|	3	|文件上传到hdfs上去的replication次数|
+|spark.yarn.preserve.staging.files|	false	|设置为true时，在job结束时，保留staged文件；否则删掉这些文件。|
+|spark.yarn.scheduler.heartbeat.interval-ms|	3000|	Spark应用master与yarn resourcemanager之间的心跳间隔|
+|spark.yarn.scheduler.initial-allocation.interval|	200ms	|当存在挂起的容器分配请求时，spark应用master发送心跳给resourcemanager的间隔时间。它的大小不能大于spark.yarn.scheduler.heartbeat.interval-ms，如果挂起的请求还存在，那么这个时间加倍，直到到达spark.yarn.scheduler.heartbeat.interval-ms大小。|
+|spark.yarn.max.executor.failures|	numExecutors * 2，并且不小于3|	在失败应用程序之前，executor失败的最大次数。|
+|spark.executor.instances|	2|	Executors的个数。这个配置和spark.dynamicAllocation.enabled不兼容。当同时配置这两个配置时，动态分配关闭，spark.executor.instances被使用|
+|spark.yarn.executor.memoryOverhead|	executorMemory * 0.10，并且不小于384m|	每个executor分配的堆外内存。|
+|spark.yarn.driver.memoryOverhead|	driverMemory * 0.10，并且不小于384m|	在集群模式下，每个driver分配的堆外内存。|
+|spark.yarn.am.memoryOverhead|	AM memory * 0.10，并且不小于384m|	在客户端模式下，每个driver分配的堆外内存|
+|spark.yarn.am.port	|随机	|Yarn 应用master监听的端口。|
+|spark.yarn.queue	|default|	应用提交的yarn队列的名称|
+|spark.yarn.jar	|none|	Jar文件存放的地方。默认情况下，spark jar安装在本地，但是jar也可以放在hdfs上，其他机器也可以共享。|
+
+## spark submit 和 spark shell参数介绍
+
+| 参数名  | 格式 | 参数说明 |
+| --- | --- | --- |
+|--master	|MASTER_URL	|如spark://host:port|
+|--deploy-mode	|DEPLOY_MODE|	Client或者master，默认是client|
+|--class	|CLASS_NAME	|应用程序的主类|
+|--name|	NAME	|应用程序的名称|
+|--jars	|JARS|	逗号分隔的本地jar包，包含在driver和executor的classpath下|
+|--packages	|	|包含在driver和executor的classpath下的jar包逗号分隔的”groupId:artifactId：version”列表|
+|--exclude-packages|		|用逗号分隔的”groupId:artifactId”列表|
+|--repositories|		|逗号分隔的远程仓库|
+|--py-files	|PY_FILES|	逗号分隔的”.zip”,”.egg”或者“.py”文件，这些文件放在python app的PYTHONPATH下面|
+|--files	|FILES|	逗号分隔的文件，这些文件放在每个executor的工作目录下面|
+|--conf	|PROP=VALUE	|固定的spark配置属性|
+|--properties-file	|FILE|	加载额外属性的文件|
+|--driver-memory	|MEM	|Driver内存，默认1G|
+|--driver-java-options	|	|传给driver的额外的Java选项|
+|--driver-library-path	||	传给driver的额外的库路径|
+|--driver-class-path||		传给driver的额外的类路径|
+|--executor-memory	|MEM|	每个executor的内存，默认是1G|
+|--proxy-user	|NAME|	模拟提交应用程序的用户|
+|--driver-cores	|NUM	|Driver的核数，默认是1。这个参数仅仅在standalone集群deploy模式下使用|
+|--supervise	||	Driver失败时，重启driver。在mesos或者standalone下使用|
+|--verbose	||	打印debug信息|
+|--total-executor-cores	|NUM|	所有executor总共的核数。仅仅在mesos或者standalone下使用|
+|--executor-cores	|NUM|	每个executor的核数。在yarn或者standalone下使用|
+|--driver-cores	|NUM	|Driver的核数，默认是1。在yarn集群模式下使用|
+|--queue	|QUEUE_NAME|	队列名称。在yarn下使用|
+|--num-executors|	NUM	|启动的executor数量。默认为2。在yarn下使用|
+
+## java参数
+
+
+```shell
+# driver的jvm参数配置，和conf的区别是client模式下必须使用此种配置，因为SparkContext的config起作用的时候，driver已经启动的了
+--driver-java-options
+# cluster模式的dirver参数
+--conf spark.driver.extraJavaOptions
+# executor的jvm参数，适用client和cluster
+--conf spark.executor.extraJavaOptions
+
+```
+# spark on yarn
+## 客户端模式和集群模式
+### 客户端模式和集群模式的区别
+
+这里我们要区分一下什么是客户端模式（client mode），什么是集群模式（cluster mode）。
+
+我们知道，当在YARN上运行Spark作业时，每个Spark executor作为一个YARN容器(container)运行。Spark可以使得多个Tasks在同一个容器(container)里面运行。 yarn-cluster和yarn-client模式的区别其实就是Application Master进程的区别，在yarn-cluster模式下，driver运行在AM(Application Master)中，它负责向YARN申请资源，并监督作业的运行状况。当用户提交了作业之后，就可以关掉Client，作业会继续在YARN上运行。然而yarn-cluster模式不适合运行交互类型的作业。 在yarn-client模式下，Application Master仅仅向YARN请求executor，client会和请求的container通信来调度他们工作，也就是说Client不能离开。下面的图形象表示了两者的区别。
+![](media/15913467419658.jpg)
+![](media/15913468411482.jpg)
+
+### Spark on YARN集群模式分析
+
+#### 客户端操作
+1. 根据yarnConf来初始化yarnClient，并启动yarnClient；
+2. 创建客户端Application，并获取Application的ID，进一步判断集群中的资源是否满足executor和ApplicationMaster申请的资源，如果不满足则抛出IllegalArgumentException；
+3. 设置资源、环境变量：其中包括了设置Application的Staging目录、准备本地资源（jar文件、log4j.properties）、设置Application其中的环境变量、创建Container启动的Context等；
+4. 设置Application提交的Context，包括设置应用的名字、队列、AM的申请的Container、标记该作业的类型为Spark；
+5. 申请Memory，并最终通过yarnClient.submitApplication向ResourceManager提交该Application。
+
+当作业提交到YARN上之后，客户端就没事了，甚至在终端关掉那个进程也没事，因为整个作业运行在YARN集群上进行，运行的结果将会保存到HDFS或者日志中。
+
+#### 提交到YARN集群，YARN操作
+1. 运行ApplicationMaster的run方法；
+2. 设置好相关的环境变量。
+3. 创建amClient，并启动；
+4. 在Spark UI启动之前设置Spark UI的AmIpFilter；
+5. 在startUserClass函数专门启动了一个线程（名称为Driver的线程）来启动用户提交的Application，也就是启动了Driver。在Driver中将会初始化SparkContext；
+6. 等待SparkContext初始化完成，最多等待spark.yarn.applicationMaster.waitTries次数（默认为10），如果等待了的次数超过了配置的，程序将会退出；否则用SparkContext初始化yarnAllocator；
+7. 当SparkContext、Driver初始化完成的时候，通过amClient向ResourceManager注册ApplicationMaster;
+8. 分配并启动Executeors。在启动Executeors之前，先要通过yarnAllocator获取到numExecutors个Container，然后在Container中启动Executeors。 如果在启动Executeors的过程中失败的次数达到了maxNumExecutorFailures的次数，maxNumExecutorFailures的计算规则如下：
+
+    ```java
+    // Default to numExecutors * 2, with minimum of 3
+    private val maxNumExecutorFailures = sparkConf.getInt("spark.yarn.max.executor.failures",
+        sparkConf.getInt("spark.yarn.max.worker.failures", math.max(args.numExecutors * 2, 3)))
+    
+    ```
+    那么这个Application将失败，将Application Status标明为FAILED，并将关闭SparkContext。其实，启动Executeors是通过ExecutorRunnable实现的，而ExecutorRunnable内部是启动CoarseGrainedExecutorBackend的。
+
+9. 最后，Task将在CoarseGrainedExecutorBackend里面运行，然后运行状况会通过Akka通知CoarseGrainedScheduler，直到作业运行完成。
+
+### Spark on YARN客户端模式分析
+和yarn-cluster模式一样，整个程序也是通过spark-submit脚本提交的。但是yarn-client作业程序的运行不需要通过Client类来封装启动，而是直接通过反射机制调用作业的main函数。下面是流程。
+
+1. 通过SparkSubmit类的launch的函数直接调用作业的main函数（通过反射机制实现），如果是集群模式就会调用Client的main函数。
+2. 而应用程序的main函数一定都有个SparkContent，并对其进行初始化；
+3. 在SparkContent初始化中将会依次做如下的事情：设置相关的配置、注册MapOutputTracker、BlockManagerMaster、BlockManager，创建taskScheduler和dagScheduler；
+4. 初始化完taskScheduler后，将创建dagScheduler，然后通过taskScheduler.start()启动taskScheduler，而在taskScheduler启动的过程中也会调用SchedulerBackend的start方法。 在SchedulerBackend启动的过程中将会初始化一些参数，封装在ClientArguments中，并将封装好的ClientArguments传进Client类中，并client.runApp()方法获取Application ID。
+5. client.runApp里面的做的和上章客户端进行操作那节类似，不同的是在里面启动是ExecutorLauncher（yarn-cluster模式启动的是ApplicationMaster）。
+6. 在ExecutorLauncher里面会初始化并启动amClient，然后向ApplicationMaster注册该Application。注册完之后将会等待driver的启动，当driver启动完之后，会创建一个MonitorActor对象用于和CoarseGrainedSchedulerBackend进行通信（只有事件AddWebUIFilter他们之间才通信，Task的运行状况不是通过它和CoarseGrainedSchedulerBackend通信的）。 然后就是设置addAmIpFilter，当作业完成的时候，ExecutorLauncher将通过amClient设置Application的状态为FinalApplicationStatus.SUCCEEDED。
+7. 分配Executors，这里面的分配逻辑和yarn-cluster里面类似。
+8. 最后，Task将在CoarseGrainedExecutorBackend里面运行，然后运行状况会通过Akka通知CoarseGrainedScheduler，直到作业运行完成。
+9. 在作业运行的时候，YarnClientSchedulerBackend会每隔1秒通过client获取到作业的运行状况，并打印出相应的运行信息，当Application的状态是FINISHED、FAILED和KILLED中的一种，那么程序将退出等待。
+10. 最后有个线程会再次确认Application的状态，当Application的状态是FINISHED、FAILED和KILLED中的一种，程序就运行完成，并停止SparkContext。整个过程就结束了。
+
+## 动态资源分配
+### 为什么开启动态资源分配
+
+⽤户提交Spark应⽤到Yarn上时，可以通过spark-submit的num-executors参数显示地指定executor 个数，随后，ApplicationMaster会为这些executor申请资源，每个executor作为⼀个Container在 Yarn上运⾏。Spark调度器会把Task按照合适的策略分配到executor上执⾏。所有任务执⾏完后， executor被杀死，应⽤结束。在job运⾏的过程中，⽆论executor是否领取到任务，都会⼀直占有着 资源不释放。很显然，这在任务量⼩且显示指定⼤量executor的情况下会很容易造成资源浪费
+
+### yarn配置
+vim etc/hadoop/yarn-site.xml
+
+```xml
+<property>
+ 　　<name>yarn.nodemanager.aux-services</name>
+ 　　<value>spark_shuffle,mapreduce_shuffle</value>
+ </property>
+ <property>
+ 　　<name>yarn.nodemanager.aux-services.spark_shuffle.class</name>
+ 　　<value>org.apache.spark.network.yarn.YarnShuffleService</value>
+</property>
+```
+
+添加jar包
+
+```shell
+mv  spark/yarn/spark-2.11-2.2.1-shuffle_.jar /opt/modules/hadoop-2.6.0-cdh5.14.2/share/hadoop/yarn/
+```
+
+### spark配置
+
+spark-defaults.conf：
+
+```conf
+spark.shuffle.service.enabled true //启⽤External shuffle Service服务
+spark.shuffle.service.port 7337 //Shuffle Service服务端⼝，必须和yarn-site中的⼀致
+spark.dynamicAllocation.enabled true //开启动态资源分配
+spark.dynamicAllocation.minExecutors 1 //每个Application最⼩分配的executor数
+spark.dynamicAllocation.maxExecutors 30 //每个Application最⼤并发分配的executor数
+spark.dynamicAllocation.schedulerBacklogTimeout 1s
+spark.dynamicAllocation.sustainedSchedulerBacklogTimeout 5s
+```
+
+在代码或启动脚本中加也可以：
+
+```shell
+spark2-shell —master yarn —eploy-mode client \
+#指定队列
+—queue "test" \
+#日志配置
+—conf spark.driver.extraJava0ptions=-Dlog4j.configuration=log4j-yarn.properties \
+—conf spark.executor.extraJava0ptions=-Dlog4j.configuration=log4j-yarn.properties \
+—conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
+#推测执行等待时间
+—conf spark.locality.wait=10 \
+#最大失败重试次数
+—conf spark.task.maxFailures=8 \
+—conf spark.ui.killEnabled=false \
+—conf spark.logConf=true \
+#非堆内存配置
+—conf spark.yarn.driver.memoryOverhead=512 \
+—conf spark.yarn.executor.memoryOverhead=1024 \
+—conf spark.yarn.maxAppAttempts=4 \
+—conf spark.yarn.am.attemptFailuresValidityInterval=lh \
+—conf spark.yarn.executor.failuresValidityInterval=lh \
+#动态资源开启
+—conf spark.dynamicAllocation.enabled=true \
+#最大最小申请的Executors数
+—conf spark.dynamicAllocation.minExecutors=l \
+—conf spark.dynamicAllocation.maxExecutors=30 \
+—conf spark.dynamicAllocation.executorldleTimeout=3s \
+—conf spark.shuffle.service.enabled=true
+```
+
+#  推测执行(speculatie)
+        
+## speculatie简介
+
+在spark作业运行中，一个spark作业会构成一个DAG调度图，一个DAG又切分成多个stage，一个stage由多个Tesk组成，一个stage里面的不同task的执行时间可能不一样，有的task很快就执行完成了，而有的可能执行很长一段时间也没有完成。造成这种情况的原因可能是集群内机器的配置性能不同、网络波动、或者是由于数据倾斜引起的。而推测执行(speculatie)就是当出现同一个stage里面有task长时间完成不了任务，spark就会在不同的executor上再启动一个task来跑这个任务，然后看哪个task先完成，就取该task的结果，并kill掉另一个task。其实对于集群内有不同性能的机器开启这个功能是比较有用的。
+
+## 如何在spark中启动speculatie
+
+1. 在spark-env.sh里设置
+   spark.speculation=true # 这样会作用到所有spark任务
+
+2. 在代码里通过sparkConf设置
+   conf.set("spark.speculation", true)
+
+3. 在用spark sql时
+    spark.sql("set  spark.speculation = true")
+
+4. map和reduce可以分开设置
+    sqlContext.sql("set mapreduce.map.speculatie = true")
+    sqlContext.sql("set mapreduce.reduce.speculatie = true")
+
+## speculatie 运行机制
+
+1. 监控Slow Task(Straggler Task)
+
+    spark程序运行时，会在TaskSchedulerImpl类中启动一个独立的线程池(task-scheduler-speculation)每100ms检查一次所有Task中是否有Slow Task.
+
+2. Straggler Task衡量指标
+
+    如下图所示，在Spark调度作业中，DAGScheduler会将每个Stage中的Task封装到TaskSet，并将TaskSet交给TaskScheduler，TaskScheduler 会按顺序将Task发给Executor，并由Executor端执行这些Task。在这些Task计算过程中，Driver端如何衡量哪些Task是Straggler Task（TaskSet中所有的Task都是并行计算，在不同的Executor中计算），这个衡量过程Spark称为speculatie Task，符合speculatie Task的Task，Spark 称为Straggler Task.
+    
+![](media/15913474234874.jpg)

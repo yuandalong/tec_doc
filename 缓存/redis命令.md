@@ -4,7 +4,8 @@
 # 批量删除
 redis-cli keys '123*' |xargs redis-cli del
 
-# 有序集合操作
+# 有序集合操作（sorted_set）
+[参考文档](http://www.redis.cn/commands.html#sorted_set)
 ## 根据索引查询
 zrange key 0 -1
 
@@ -48,6 +49,7 @@ keys *a
 * 特殊符号使用\隔开。
 
 # hash操作
+[参考文档](http://www.redis.cn/commands.html#hash)
 ## 获取所有field和value
 
 `hgetall key`
@@ -67,3 +69,57 @@ keys *a
 ## 获取单个字段的值
 `hget key FIELD1`
 
+# set操作
+[参考文档](http://www.redis.cn/commands.html#set)
+## 所有成员
+`SMEMBERS key`
+
+## 成员个数
+`SCARD key`
+
+## 添加成员
+`SADD key member`
+
+## 是否包含
+`SISMEMBER key member`
+
+
+# list操作
+## 所有元素
+`LRANGE mylist 0 -1`
+-1表示最后一个元素，一次类推，-2就是最后第二个
+
+##  入队
+右侧入队
+`RPUSH mylist "hello"`
+
+左侧入队
+`LPUSH mylist "hello"`
+
+## 修改值
+`LSET mylist 0 "four"`
+
+## 出队
+左侧出队
+`LPOP mylist`
+
+右侧出队
+`RPOP mylist`
+
+## 修剪
+`LTRIM mylist 1 -1`
+保留第二个到最后一个元素，相当于删除第一个元素
+
+## 阻塞式出队
+左出队
+`BLPOP list1 list2 0`
+
+右出队
+`BRPOP list1 list2 0`
+
+0为超时时间，表示不超时，可根据情况设置超时时间
+
+可同时监控多个队列，当队列里有值时立刻返回，返回的是队列名和元素值，当队列里没值时会阻塞直至有元素入队并返回
+
+## 长度
+`LLEN list1`
