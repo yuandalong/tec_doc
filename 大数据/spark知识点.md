@@ -705,3 +705,195 @@ spark2-shell —master yarn —eploy-mode client \
     如下图所示，在Spark调度作业中，DAGScheduler会将每个Stage中的Task封装到TaskSet，并将TaskSet交给TaskScheduler，TaskScheduler 会按顺序将Task发给Executor，并由Executor端执行这些Task。在这些Task计算过程中，Driver端如何衡量哪些Task是Straggler Task（TaskSet中所有的Task都是并行计算，在不同的Executor中计算），这个衡量过程Spark称为speculatie Task，符合speculatie Task的Task，Spark 称为Straggler Task.
     
 ![](media/15913474234874.jpg)
+
+
+# spark中的各种变量
+[参考文档](https://blog.csdn.net/wangjian1204/article/details/52664250)
+
+Spark程序在变量的访问方式上与传统的java程序有一些不同，导致了传值和结果上的差异。本文通过一组实验来分析Spark对各种形式变量的处理方式。
+下面这个简单的小程序创建了 
+- 静态变量staticVariable、静态广播变量staticBroadcast、静态累加器staticAccumulator； 
+- 成员变量objectVariable、成员广播变量objectBroadcast、成员累加器objectAccumulator； 
+- 局部变量localVariable、局部广播变量localBroadcast、局部累加器localAccumulator； 
+
+共计9种变量，在函数中对字符串数据修改了两次数值（“banana”和“cat”）、在flatMap函数中对累加器的值进行累加。
+
+```java
+/**
+ * Created by Alex on 2016/9/25.
+ */
+public class TestSharedVariable implements Serializable {
+    private static Logger logger = LoggerFactory.getLogger(TestSharedVariable.class);
+    private static String staticVariable = "apple";
+//    private static Broadcast<String> staticBroadcast;  //java.lang.NullPointerException
+//    private static Accumulator<Integer> staticAccumulator;
+
+    private String objectVariable = "apple";
+    private Broadcast<String> objectBroadcast;
+    private Accumulator<Integer> objectAccumulator;
+
+
+    public void testVariables(JavaSparkContext sc) throws Exception {
+        staticVariable = "banana";
+//        staticBroadcast = sc.broadcast("banana");
+//        staticAccumulator = sc.intAccumulator(0);
+
+        objectVariable = "banana";
+        objectBroadcast = sc.broadcast("banana");
+        objectAccumulator = sc.intAccumulator(0);
+
+        String localVariable = "banana";
+        accessVariables(sc, localVariable);
+
+        staticVariable = "cat";
+//        staticBroadcast = sc.broadcast("cat");
+        objectVariable = "cat";
+        objectBroadcast = sc.broadcast("cat");
+        localVariable = "cat";
+        accessVariables(sc, localVariable);
+    }
+
+    public void accessVariables(JavaSparkContext sc, final String localVariable) throws Exception {
+        final Broadcast<String> localBroadcast = sc.broadcast(localVariable);
+        final Accumulator<Integer> localAccumulator = sc.intAccumulator(0);
+
+        List<String> list = Arrays.asList("machine learning", "deep learning", "graphic model");
+        JavaRDD<String> rddx = sc.parallelize(list).flatMap(new FlatMapFunction<String, String>() {
+
+            @Override
+            public Iterable<String> call(String s) throws Exception {
+                List<String> list = new ArrayList<String>();
+
+                if (s.equalsIgnoreCase("machine learning")) {
+                    list.add("staticVariable:" + staticVariable);
+                    list.add("objectVariable:" + objectVariable);
+                    list.add("objectBroadcast:" + objectBroadcast.getValue());
+                    list.add("localVariable:" + localVariable);
+                    list.add("localBroadcast:" + localBroadcast.getValue());
+                }
+
+//                staticAccumulator.add(1);
+                objectAccumulator.add(1);
+                localAccumulator.add(1);
+
+                return list;
+            }
+        });
+
+
+        String desPath = "learn" + localVariable;
+        HdfsOperate.deleteIfExist(desPath);
+        HdfsOperate.openHdfsFile(desPath);
+        List<String> resultList = rddx.collect();
+        for (String str : resultList) {
+            HdfsOperate.writeString(str);
+        }
+        HdfsOperate.writeString("objectAccumulator:" + objectAccumulator.value());
+        HdfsOperate.writeString("localAccumulator:" + localAccumulator.value());
+        HdfsOperate.closeHdfsFile();
+    }
+
+}
+```
+最终得到两个文件：learnbanana、learncat 
+learnbanana的内容：
+
+```
+taticVariable:apple
+objectVariable:banana
+objectBroadcast:banana
+localVariable:banana
+localBroadcast:banana
+objectAccumulator:3
+localAccumulator:3
+```
+learncat的内容：
+
+```
+staticVariable:apple
+objectVariable:cat
+objectBroadcast:cat
+localVariable:cat
+localBroadcast:cat
+objectAccumulator:6
+localAccumulator:3                    
+```
+
+1. 静态广播变量staticBroadcast、静态累加器staticAccumulator在运行过程中会引发异常：java.lang.NullPointerException，所以在运行过程中需要注释掉。这点和普通的java函数有较大差别。另外可以看到静态变量staticVariable初始化之后无法在函数中改变它的值。
+2. 成员变量objectVariable、成员广播变量objectBroadcast、成员累加器objectAccumulator、局部变量localVariable、局部广播变量localBroadcast、局部累加器localAccumulator都在程序中正常修改得到了我们想要的值。
+3. 需要注意的是局部变量、局部广播变量、局部累加器这三种变量由于需要在inner class中访问，需要被定义成final形式，但不影响其正常使用，可以看到局部累加器还是正确的增加了值。
+
+小小总结一下，在使用Spark编程时如果要对变量进行访问和操作尽量使用成员类型变量和局部类型变量。另外普通变量和广播变量之间的区别主要在于广播变量在处理过程中是经过优化的，可以减少不必要的资源浪费，一般size较小的变量不需要用Broadcast，详细的解释请参考文章：http://g-chi.github.io/2015/10/21/Spark-why-use-broadcast-variables/
+
+HdfsOperate类是使用hadoop的FileSystem接口对HDFS文件进行操作，完整代码如下：
+
+```java
+/**
+ * Created by Alex on 2016/8/30.
+ */
+public class HdfsOperate implements Serializable{
+
+    private static Logger logger = LoggerFactory.getLogger(HdfsOperate.class);
+    private static Configuration conf = new Configuration();
+    private static BufferedWriter writer = null;
+
+    public static boolean isExist(String path) {
+        try {
+            FileSystem fileSystem = FileSystem.get(conf);
+            Path path1 = new Path(path);
+            if (fileSystem.exists(path1)) {
+                return true;
+            }
+        } catch (Exception e) {
+            logger.error("[HdfsOperate]>>>isExist error", e);
+        }
+        return false;
+    }
+
+    public static void deleteIfExist(String path) {
+        try {
+            FileSystem fileSystem = FileSystem.get(conf);
+            Path path1 = new Path(path);
+            if (fileSystem.exists(path1)) {
+                fileSystem.delete(path1, true);
+            }
+        } catch (Exception e) {
+            logger.error("[HdfsOperate]>>>deleteHdfsFile error", e);
+        }
+    }
+
+    public static void openHdfsFile(String path) throws Exception {
+        FileSystem fs = FileSystem.get(URI.create(path),conf);
+        writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(path))));
+        if(null!=writer){
+            logger.info("[HdfsOperate]>> initialize writer succeed!");
+        }
+    }
+
+    public static void writeString(String line) {
+        try {
+            writer.write(line + "\n");
+        }catch(Exception e){
+            logger.error("[HdfsOperate]>> writer a line error:"  ,  e);
+        }
+    }
+
+    public static void closeHdfsFile() {
+        try {
+            if (null != writer) {
+                writer.close();
+                logger.info("[HdfsOperate]>> closeHdfsFile close writer succeed!");
+            }
+            else{
+                logger.error("[HdfsOperate]>> closeHdfsFile writer is null");
+            }
+        }catch(Exception e){
+            logger.error("[HdfsOperate]>> closeHdfsFile close hdfs error:" + e);
+        }
+    }
+
+    public static void main(String[] args) {
+
+    }
+}
+```

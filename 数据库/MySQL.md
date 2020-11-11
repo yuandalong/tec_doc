@@ -14,6 +14,7 @@ alter table sys_application comment '系统信息表';
 ```sql
 alter table sys_application  modify column app_name varchar(20) COMMENT '应用的名称';
 ``` 
+**mysql没有单独修改字段注释的语句，所以要修改注释，只能是字段类型和注释一起修改**
 
 ## 修改字段类型
 ```sql
@@ -24,6 +25,15 @@ alter table sys_application  modify column app_name text;
 ```sql
 目前没发现有单独修改字段注释的命令语句。
 ``` 
+
+## 修改字段名
+
+```sql
+ALTER  TABLE 表名 CHANGE [column] 旧字段名 新字段名 新数据类型;	 
+alter  table table1 change column1 column1 varchar(100) DEFAULT 1.2 COMMENT '注释'; -- 正常，此时字段名称没有改变，能修改字段类型、类型长度、默认值、注释
+alter  table table1 change column1 column2 decimal(10,1) DEFAULT NULL COMMENT '注释' -- 正常，能修改字段名、字段类型、类型长度、默认值、注释
+alter  table table1 change column1 column2; -- 报错 没有指定字段类型等信息
+```
 
 ## 设置字段允许为空
 ```sql

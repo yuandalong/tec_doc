@@ -257,3 +257,21 @@ hadoop fs -rmr hdfs://host:port/user/hadoop/dir
 `hadoop -touchz pathname`
 返回值：
 成功返回0，失败返回-1。
+
+# hadoop fs,hadoop dfs以及hdfs dfs区别
+- hadoop fs
+    FS relates to a generic file system which can point to any file systems like local, HDFS etc. So this can be used when you are dealing with different file systems such as Local FS, HFTP FS, S3 FS, and others 
+    意思是说该命令可以用于其他文件系统，不止是hdfs文件系统内，也就是说该命令的使用范围更广
+
+- hadoop dfs 
+    专门针对hdfs分布式文件系统
+
+- hdfs dfs 
+    和上面的命令作用相同，相比于上面的命令更为推荐，并且当使用hadoop dfs时内部会被转为hdfs dfs命令
+    
+    # 删除超过指定时间的文件
+    ```shell
+    # 删除/user/spark/spark2ApplicationHistory超过30天的文件
+    # 主要是结合awk和xargs
+    hadoop fs -ls /user/spark/spark2ApplicationHistory| awk 'BEGIN{ five_days_ago=strftime("%F", systime()-30*24*3600) }{ split($8,arr,"/"); if(arr[7]<five_days_ago){printf "%s\n", $8} }'|xargs hadoop fs -rmr
+    ```

@@ -211,3 +211,36 @@ ON DUPLICATE KEY UPDATE column_name = 'aa'
         #开启日志
         log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     ```
+    
+    # 注解复杂查询
+    
+```java
+    @Select( " <script>" +
+            " select id, user_id userId, batch_number batchNumber, unit_name unitName, word_detail wordDetail,word, score, create_time createTime " +
+            " from word_practice_records where user_id =#{userId} and batch_number=#{batchNumber} and unit_name=#{unitName} and  word  in "+
+            " <foreach collection='wordScoreViewList' open='(' item='wordScore' separator=',' close=')'> #{wordScore.word}</foreach> "+
+            " </script>" )
+    List<WordPracticeRecords> getLessThan40WordByWordList(@Param("userId") String userId, @Param( "batchNumber" )String batchNumber,
+                                                          @Param( "unitName" ) String unitName, @Param( "wordScoreViewList" ) List<WordScoreView>  wordScoreViewList);
+
+```
+
+**注意：**
+需要再前后增加<script></script> 标签
+
+循环使用：
+
+```xml
+<foreach collection='wordScoreViewList' open='(' item='wordScore' separator=',' close=')'> 
+    #{wordScore.word}
+</foreach>
+```
+
+ collection 遍历的类型,(集合为list,数组为array,如果方法参数是对象的某个属性,而这个属性是list,或array类型,就可以写形参的名字)
+ open 条件的开始 
+ close 条件的结束 
+ item  遍历集合时候定义的临时变量，存储当前遍历的每一个值 
+ separator 多个值之间用逗号拼接
+  #{wordScore.word}   获取遍历的每一个值,与item定义的临时变量一致，item变量是一个实体，要获取里面word属性
+
+ 

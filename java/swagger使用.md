@@ -90,6 +90,22 @@ public class AdminUserController extends BaseController {
 * @ApiResponse： 描述单个出参信息
 * @ApiResponses： 描述多个出参信息
 * @ApiError： 接口错误所返回的信息
+## 示例
+
+```java
+@ApiOperation("查询测试")
+@GetMapping("select")
+//@ApiImplicitParam(name="name",value="用户名",dataType="String", paramType = "query")
+@ApiImplicitParams({
+        @ApiImplicitParam(name="name",value="用户名",dataType="string", paramType = "query",example="xingguo"),
+        @ApiImplicitParam(name="id",value="用户id",dataType="long", paramType = "query")})
+@ApiResponses({
+        @ApiResponse(code = 0,message = "成功"),
+        @ApiResponse(code = -1,message = "内部错误")
+    })
+public int select(){
+}
+```
 
 # 访问地址
 ## ui地址

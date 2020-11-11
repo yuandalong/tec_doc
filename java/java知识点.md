@@ -2053,3 +2053,86 @@ public class ParticularlyVipPayService implements UserPayService,InitializingBea
 所以，读者不必纠结于到底是不是真的用了策略模式和工厂模式。而且，这里面也再扩展一句，所谓的 GOF 23 种设计模式，无论从哪本书或者哪个博客看，都是简单的代码示例，但是我们日常开发很多都是基于 Spring 等框架的，根本没办法直接用的。
 
 所以，对于设计模式的学习，重要的是学习其思想，而不是代码实现！！！
+
+# 常量和静态变量的区别
+[参考文档](https://blog.csdn.net/luzhensmart/article/details/86855029)
+
+如下：测试java中静态常量和静态变量区别的样例，表明两者加载时的区别。
+
+StaticClass类中定义了静态常量FIANL_VALUE和静态变量VALUE，静态代码块的打印语句表示类被加载
+
+```java
+public class StaticClass {  
+ 
+    static {  
+        System.out.println("StaticClass loading...");  
+    }  
+      
+    public static String VALUE = "static value loading";  
+      
+    public static final String FIANL_VALUE = "fianl value loading";  
+}
+```  
+
+StaticClassLoadTest类用于测试静态变量的加载：
+
+```java
+public class StaticClassLoadTest {  
+      
+    public static void main(String[] args) {  
+        System.out.println("StaticClassLoadTest...");  
+        printStaticVar();  
+    }  
+      
+    private static void printStaticVar() {  
+        System.out.println(StaticVar.FIANL_VALUE);  
+        System.out.println(StaticVar.VALUE);  
+    }  
+      
+}  
+```
+
+输出：
+
+```
+StaticClassLoadTest...
+fianl value loading 
+StaticClass loading...  
+static value loading 
+
+```
+
+输出显示在打印静态常量时，StaticVar类并没有被加载，在输出静态变量的前才打印类加载信息。这表明类的未加载的情况下也能引用其静态常量信息，原因是因为常量值存储在JVM内存中的常量区中，在类不加载时即可访问。
+
+注：**经过编译优化，静态常量 FIANL_VALUE 已经存到NotInit类自身常量池中，不会加载StaticClass**
+
+Java中的常量池，实际上分为两种形态：静态常量池和运行时常量池。
+
+所谓静态常量池，即*.class文件中的常量池，class文件中的常量池不仅仅包含字符串(数字)字面量，还包含类、方法的信息，占用class文件绝大部分空间。这种常量池主要用于存放两大类常量：字面量(Literal)和符号引用量(Symbolic References)，字面量相当于Java语言层面常量的概念，如文本字符串，声明为final的常量值等，符号引用则属于编译原理方面的概念，包括了如下三种类型的常量：
+* 类和接口的全限定名
+* 字段名称和描述符
+* 方法名称和描述符
+
+而运行时常量池，则是jvm虚拟机在完成类装载操作后，将class文件中的常量池载入到内存中，并保存在方法区中，我们常说的常量池，就是指方法区中的运行时常量池。
+
+运行时常量池相对于CLass文件常量池的另外一个重要特征是具备动态性，Java语言并不要求常量一定只有编译期才能产生，也就是并非预置入CLass文件中常量池的内容才能进入方法区运行时常量池，运行期间也可能将新的常量放入池中，这种特性被开发人员利用比较多的就是String类的intern()方法。
+
+String的intern()方法会查找在常量池中是否存在一份equal相等的字符串,如果有则返回该字符串的引用,如果没有则添加自己的字符串进入常量池。
+
+ 
+
+常量池的好处
+常量池是为了避免频繁的创建和销毁对象而影响系统性能，其实现了对象的共享。
+例如字符串常量池，在编译阶段就把所有的字符串文字放到一个常量池中。
+（1）节省内存空间：常量池中所有相同的字符串常量被合并，只占用一个空间。
+（2）节省运行时间：比较字符串时，`==比equals()快。对于两个引用变量，只用==`判断引用是否相等，也就可以判断实际值是否相等。
+
+因此`public static final String FIANL_VALUE = "fianl value loading"; `字面量 被存储到了常量池中。
+
+![](media/16040355878598.jpg)
+
+
+
+但是不能说所有的静态常用访问都不需要类的加载，这里还要判断这个常量是否属于“编译期常量”，即在编译期即可确定常量值。如果常量值必须在运行时才能确定，如常量值是一个随机值，也会引起类的加载，如下：
+
+`public static final int FINAL_VALUE_INT = new Random(66).nextInt();  `
