@@ -125,6 +125,161 @@ senv.execute("Streaming Wordcount")
 
 对 DataStream 任务，print() 并不会触发任务的执行，需要显示调用 execute(“job name”) 才会执行任务
 
+# 关键概念
+
+## Source
+
+source是flink的数据来源
+主要类图如下：
+![source类图](media/16052589592649.jpg)
+
+### SourceFunction
+
+source的核心的是SourceFunction类，这个类主要有两个方法，run方法和cancel方法
+* run方法的功能是核心功能，主要用于source往出emit元素
+* cancel方法时用于取消run方法的执行，一般来说run方法内部是一个循环，cancel方法中控制run方法的循环不满足条件，从而取消run方法的执行。
+
+### RichFunction
+
+是一个富函数，这个函数里包含了很多基础的方法
+* open方法一般用于初始化设置，一般在核心方法调用之前执行，用于初始化变量等
+* close方法一般用于结束，用于回收资源方面的操作
+* xxxRuntimeContext 这些方法用于对上下文进行操作
+
+### AbstractRichFunction
+
+该抽象类实现了RichFunction接口的关于xxxRuntimeContext 的方法
+
+### RichParallelSourceFunction
+
+**我们如果需要自定义Source，一般实现这个类就可以**，我们可以重写run,cancel，open等方法来实现我们自己需要的逻辑。如flink中的InputFormatSourceFunction.java的实现
+
+### 自定义Source
+
+自定义msyql的Source
+
+```java
+public class MySQLSource extends RichParallelSourceFunction<Student> {
+
+   PreparedStatement ps;
+   private Connection connection;
+
+
+   @Override
+   public void open(Configuration parameters) throws Exception {
+       super.open(parameters);
+           try {
+               Class.forName("com.mysql.jdbc.Driver");
+               connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/flink?useUnicode=true&characterEncoding=UTF-8", "root", "root");
+           } catch (Exception e) {
+               System.out.println(e.getMessage());
+           }
+
+       String sql = "select * from student;";
+       ps = this.connection.prepareStatement(sql);
+   }
+
+   @Override
+   public void close() throws Exception {
+       super.close();
+       if (connection != null) { //关闭连接和释放资源
+           connection.close();
+       }
+       if (ps != null) {
+           ps.close();
+       }
+   }
+
+
+   @Override
+   public void run(SourceContext<Student> ctx) throws Exception {
+       ResultSet resultSet = ps.executeQuery();
+       while (resultSet.next()) {
+           Student student = new Student(
+                   resultSet.getInt("id"),
+                   resultSet.getString("name").trim(),
+           ctx.collect(student);
+       }
+   }
+
+   @Override
+   public void cancel() {
+   }
+  
+}
+```
+
+
+## Transform
+
+数据转换
+具体参考常用算子这一节
+
+## Sink
+
+sink负责把flink处理后的数据输出到外部系统中，flink 的sink和source的代码结构类似。
+主要类图：
+![](media/16052599842767.jpg)
+
+### SinkFunction 
+是一个接口，类似于SourceFunction接口。SinkFunction中主要包含一个方法，那就是用于数据输出的invoke 方法,每条记录都会执行一次invoke方法，用于执行输出操作。
+
+### RichSinkFunction
+我们一般自定义Sink的时候，都是继承RichSinkFunction，他是一个抽象类，继承了AbstractRichFunction
+
+### 自定义Sink
+
+我们这里自定义一个msyql的sink，也就是把flink中的数据，最后输出到mysql中。
+
+```java
+public class MyMysqlSink extends RichSinkFunction<Person> {
+    private PreparedStatement ps = null;
+    private Connection connection = null;
+    String driver = "com.mysql.jdbc.Driver";
+    String url = "jdbc:mysql://127.0.0.1:3306/flinkdb";
+    String username = "root";
+    String password = "root";
+    // 初始化方法
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        super.open(parameters);
+        // 获取连接
+        connection = getConn();
+        //执行查询
+        ps = connection.prepareStatement("select * from person;");
+    }
+    private Connection getConn() {
+        try {
+            Class.forName(driver);
+            connection = DriverManager.getConnection(url, username, password);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return connection;
+    }
+    //Writes the given value to the sink. This function is called for every record.
+    //每一个元素的插入，都会被调用一次invoke方法
+    @Override
+    public void invoke(Person p, Context context) throws Exception {
+        ps.setString(1,p.getName());
+        ps.setInt(2,p.getAge());
+        ps.executeUpdate();
+    }
+
+    @Override
+    public void close() throws Exception {
+        super.close();
+        if(connection != null){
+            connection.close();
+        }
+        if (ps != null){
+            ps.close();
+        }
+    }
+}
+```
+
+
 # DataSet与DataStream的区别
 
 DataSet同DataStream从其接口封装、真实计算Operator有很大的差别，Dataset的实现在flink-javamodule中，而DataStream的实现在flink-streaming-java中；
@@ -796,4 +951,68 @@ DataStream --> DataStream：提取记录中的时间戳来跟需要事件时间�
 
 ```scala
 import org.apache.flink.api.scala._
+```
+
+# DataStream结果输出
+
+## 打印到控制台
+
+```java
+// 获取运行环境
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 获取数据源
+DataStream<String> text = env.socketTextStream("IP", port, "\n");
+...省略中间算子处理...
+// 使用一个并行度将结果打印至控制台
+text.print().setParallelism(1);
+```
+
+## 打印至文本文件
+
+```java
+// 获取运行环境
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 获取数据源
+DataStream<String> text = env.socketTextStream("IP", port, "\n");
+...省略中间算子处理...
+// 使用一个并行度将结果打印至文本文件
+text.writeAsText(String path).setParallelism(1);
+```
+
+## 打印至csv文件
+
+```java
+// 获取运行环境
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 获取数据源
+DataStream<String> text = env.socketTextStream("IP", port, "\n");
+...省略中间算子处理...
+// 使用一个并行度将结果打印至控制台
+text.writeAsCsv(String path).setParallelism(1);
+```
+
+## 打印至scoket
+
+```java
+// 获取运行环境
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 获取数据源
+DataStream<String> text = env.socketTextStream("IP", port, "\n");
+...省略中间算子处理...
+// 使用一个并行度将结果打印至控制台
+text.writeToSocket(hostName, port, schema).setParallelism(1);
+```
+
+## 通过连接器打印到Kafka
+
+```java
+// 获取运行环境
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 获取数据源
+DataStream<String> text = env.socketTextStream("IP", port, "\n");
+...省略中间算子处理...
+// 使用一个并行度将结果打印至控制台
+String kafkaTopic = params.get("kafka-topic");
+String brokers = params.get("brokers", "localhost:9092");
+text.addSink(new FlinkKafkaProducer010(brokers, kafkaTopic, (SerializationSchema) new EventDeSerializer())).setParallelism(1);
 ```
