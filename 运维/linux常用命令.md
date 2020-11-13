@@ -763,3 +763,123 @@ curl 能够识别 URL 里面的用户名和密码。
 ## demo
 ### http post json
 `curl http://www.baidu.com -X POST -d '{"login": "emma", "pass": "123"}' -H 'Content-Type: application/json'`
+
+# split 切分文件
+可以指定按行数分割和按字节大小分割两种模式。
+
+## 按行数分割
+`split -l 300 large_file.txt new_file_prefix`
+
+加上-d，使用数字后缀；加上--verbose，显示分割进度
+
+`split -l50000 -d large_file.txt part_ --verbose`
+
+## 按字节大小分割
+
+`split -b 10m large_file.log new_file_prefix`
+
+## 参数列表
+ 
+``` 
+  -a, --suffix-length=N   generate suffixes of length N (default 2)            后缀名称的长度 (默认为2) 
+      --additional-suffix=SUFFIX  append an additional SUFFIX to file names
+  -b, --bytes=SIZE        put SIZE bytes per output file                       每个输出文件的字节大小
+  -C, --line-bytes=SIZE   put at most SIZE bytes of records per output file    每个输出文件每行的最大字节大小
+  -d                      use numeric suffixes starting at 0, not alphabetic   使用数字后缀代替字母后缀
+      --numeric-suffixes[=FROM]  same as -d, but allow setting the start value
+  -e, --elide-empty-files  do not generate empty output files with '-n'        不产生空的输出文件
+      --filter=COMMAND    write to shell COMMAND; file name is $FILE           写入到shell命令行
+  -l, --lines=NUMBER      put NUMBER lines/records per output file             设定每个输出文件的行数，默认行数是1000行
+  -n, --number=CHUNKS     generate CHUNKS output files; see explanation below  产生chunks文件
+  -t, --separator=SEP     use SEP instead of newline as the record separator;  使用新字符分割
+                            '\0' (zero) specifies the NUL character
+  -u, --unbuffered        immediately copy input to output with '-n r/...'     无需缓存
+      --verbose           print a diagnostic just before each                  显示分割进度
+                            output file is opened
+      --help     display this help and exit                                    显示帮助信息
+      --version  output version information and exit                           显示版本信息
+```
+
+# vmstat 监控工具
+
+相比top命令，通过vmstat可以看到整个机器的 CPU，内存，IO的使用情况，而不是单单看到各个进程的CPU使用率和内存使用率。
+`vmstat 2 10 -t`
+参数说明：
+2 每隔两秒统计一次
+10 共统计10次，非必填，不填的话会一直统计，如果间隔时间和统计次数都不填的话，就只统计一次
+-t 显示统计时间
+-d 统计磁盘使用情况
+
+```shell
+vmstat 2 10 -t
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu----- -----timestamp-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st                 CST
+ 3  0      0 1142708 265428 1462096    0    0     0    94    0    0  5  0 95  1  0 2020-11-13 09:54:20
+ 2  0      0 1143164 265428 1462124    0    0     0   122 4732 2674 25  0 74  0  0 2020-11-13 09:54:22
+ 2  0      0 1141676 265428 1462132    0    0     0    86 5570 3094 25  0 75  0  0 2020-11-13 09:54:24
+ 2  0      0 1141768 265428 1462152    0    0     0    94 4371 2522 25  0 75  0  0 2020-11-13 09:54:26
+ 1  0      0 1141272 265428 1462152    0    0     0   106 4141 2444 24  0 76  0  0 2020-11-13 09:54:28
+ 2  0      0 1141272 265428 1462152    0    0     0    80 3998 2224 24  0 76  0  0 2020-11-13 09:54:30
+ 2  0      0 1140652 265428 1462152    0    0     0    84 4224 2279 26  0 74  0  0 2020-11-13 09:54:32
+ 1  0      0 1140652 265428 1462156    0    0     0    80 4115 2290 24  0 76  0  0 2020-11-13 09:54:34
+ 2  0      0 1140652 265428 1462156    0    0     0   134 4141 2296 25  0 75  0  0 2020-11-13 09:54:36
+ 2  0      0 1142604 265428 1462216    0    0     0    88 4348 2480 24  1 75  0  0 2020-11-13 09:54:38
+```
+
+# dstat 全能的监控工具
+
+dstat命令是一个用来替换vmstat、iostat、netstat、nfsstat和ifstat这些命令的工具，是一个全能系统信息统计工具。
+如果没有dstat命令，则需要进行下载安装。
+参数列表:
+
+```shell
+  -c, --cpu              enable cpu stats
+     -C 0,3,total           include cpu0, cpu3 and total
+  -d, --disk             enable disk stats
+     -D total,hda           include hda and total
+  -g, --page             enable page stats
+  -i, --int              enable interrupt stats
+     -I 5,eth2              include int5 and interrupt used by eth2
+  -l, --load             enable load stats
+  -m, --mem              enable memory stats
+  -n, --net              enable network stats
+     -N eth1,total          include eth1 and total
+  -p, --proc             enable process stats
+  -r, --io               enable io stats (I/O requests completed)
+  -s, --swap             enable swap stats
+     -S swap1,total         include swap1 and total
+  -t, --time             enable time/date output
+  -T, --epoch            enable time counter (seconds since epoch)
+  -y, --sys              enable system stats
+
+  --aio                  enable aio stats
+  --fs, --filesystem     enable fs stats
+  --ipc                  enable ipc stats
+  --lock                 enable lock stats
+  --raw                  enable raw stats
+  --socket               enable socket stats
+  --tcp                  enable tcp stats
+  --udp                  enable udp stats
+  --unix                 enable unix stats
+  --vm                   enable vm stats
+
+  --plugin-name          enable plugins by plugin name (see manual)
+  --list                 list all available plugins
+
+  -a, --all              equals -cdngy (default)
+  -f, --full             automatically expand -C, -D, -I, -N and -S lists
+  -v, --vmstat           equals -pmgdsc -D total
+
+  --bits                 force bits for values expressed in bytes
+  --float                force float values on screen
+  --integer              force integer values on screen
+
+  --bw, --blackonwhite   change colors for white background terminal
+  --nocolor              disable colors (implies --noupdate)
+  --noheaders            disable repetitive headers
+  --noupdate             disable intermediate updates
+  --output file          write CSV output to file
+  --profile              show profiling statistics when exiting dstat
+```
+
+![-w594](media/16052331203245.jpg)

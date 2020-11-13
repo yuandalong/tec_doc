@@ -666,8 +666,7 @@ Kafka把topic中一个parition大文件分成多个小文件段，通过多个�
 
 |Property|Default|Description|
 |---|---|---|
-|Property|Default|Description|
-|broker.id | &nbsp; | 每个broker都可以用一个唯一的非负整数id进行标识；这个id可以作为broker的“名字”，并且它的存在使得broker无须混淆consumers就可以迁移到不同的host/port上。你可以选择任意你喜欢的数字作为id，只要id是唯一的即可。 |
+|broker.id | &nbsp; | 每个broker都可以用一个唯一的非负整数id进行标识； 这个id可以作为broker的“名字”，并且它的存在使得broker无须混淆consumers就可以迁移到不同的host/port上。你可以选择任意你喜欢的数字作为id，只要id是唯一的即可。 |
 |log.dirs | /tmp/kafka-logs | kafka存放数据的路径。这个路径并不是唯一的，可以是多个，路径之间只需要使用逗号分隔即可；每当创建新partition时，都会选择在包含最少partitions的路径下进行。 |
 |port | 6667 | server接受客户端连接的端口 |
 |zookeeper.connect | null | ZooKeeper连接字符串的格式为：hostname:port，此处hostname和port分别是ZooKeeper集群中某个节点的host和port；为了当某个host宕掉之后你能通过其他ZooKeeper节点进行连接，你可以按照一下方式制定多个hosts：<br>hostname1:port1, hostname2:port2, hostname3:port3.<br><br>ZooKeeper 允许你增加一个“chroot”路径，将集群中所有kafka数据存放在特定的路径下。当多个Kafka集群或者其他应用使用相同ZooKeeper集群时，可以使用这个方式设置数据存放路径。这种方式的实现可以通过这样设置连接字符串格式，如下所示：<br>hostname1：port1，hostname2：port2，hostname3：port3/chroot/path<br>这样设置就将所有kafka集群数据存放在/chroot/path路径下。注意，在你启动broker之前，你必须创建这个路径，并且consumers必须使用相同的连接格式。 |

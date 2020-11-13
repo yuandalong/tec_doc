@@ -96,9 +96,11 @@ Info 命令是用来查看 Flink 任务的执行计划（StreamGraph）的。
 ## scala shell
 
 ### 启动shell
+
 `bin/start-scala-shell.sh local`
 
 ### DataSet
+
 ```scala
 val text = benv.fromElements("To be, or not to be,--that is the question:--")
 val counts = text.flatMap { _.toLowerCase.split("\\W+") }.map { (_, 1) }.groupBy(0).sum(1)
@@ -113,6 +115,7 @@ benv.execute("batch test")
 ```
 
 ### DataSteam
+
 ```scala
 val textStreaming = senv.fromElements("To be, or not to be,--that is the question:--")
 val countsStreaming = textStreaming.flatMap { _.toLowerCase.split("\\W+") }.map { (_, 1) }.keyBy(0).sum(1)
@@ -121,16 +124,24 @@ senv.execute("Streaming Wordcount")
 ```
 
 对 DataStream 任务，print() 并不会触发任务的执行，需要显示调用 execute(“job name”) 才会执行任务
+
 # DataSet与DataStream的区别
+
 DataSet同DataStream从其接口封装、真实计算Operator有很大的差别，Dataset的实现在flink-javamodule中，而DataStream的实现在flink-streaming-java中；
+
 ## DataSet
+
 批式处理，其接口封装类似于Spark的Dataset，支持丰富的函数操作，比如map/fliter/join/cogroup等；
 数据源创建初始数据集，例如来自文件或Java集合等静态数据；
 所有的操作为Operator的子类，实现具体逻辑，比如Join逻辑是在JoinOperator中实现；
+
 ## DataStram
+
 流式处理，其结构封装实现输入流的处理，其也实现了丰富的函数支持；
 所有的操作为StreamOperator的子类，实现具体逻辑，比如Join逻辑是在IntervalJoinOperator中实现的；
-# Flink DataStream常用算子
+
+# Flink 常用算子
+
 [参考文档](https://blog.csdn.net/chybin500/article/details/87260869)
 [官方文档](https://ci.apache.org/projects/flink/flink-docs-release-1.11/zh/dev/batch/dataset_transformations.html)
 Flink中的算子是将一个或多个DataStream转换为新的DataStream，可以将多个转换组合成复杂的数据流拓扑。
