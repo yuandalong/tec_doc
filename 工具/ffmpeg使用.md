@@ -91,5 +91,14 @@ paste core.txt frame_indices.txt > combine.txt`
 
 生成的 combine.txt中每一行即为{}\t{}.format(core1, frame1)。
  
+# 去水印
+`ffmpeg -i input.mp4 -filter_complex "delogo=x=76:y=67:w=275:h=104:show=0" output.mp4` 
+
+x,y:水印左上角的坐标
+w:水印宽
+h:水印高
+show:0不显示绿框，1显示绿框
+
+ 
 # 参考文档
 [常用命令](https://www.cnblogs.com/xuan52rock/p/7929509.html)

@@ -8,6 +8,41 @@
 搜索后 n 下一个关键字， shift+n上一个关键字
 显示行号 :set number
 
+## 移动光标
+
+```
+上:k nk:向上移动n行 9999k或gg可以移到第一行 G移到最后一行
+下:j nj:向下移动n行
+左:h nh:向左移动n列
+右:l nl:向右移动n列
+
+w：光标以单词向前移动 nw：光标向前移动n个单词 光标到单词的第一个字母上
+b：与w相反
+e: 光标以单词向前移动 ne：光标向前移动n个单词 光标到单词的最后一个字母上
+ge: 与e相反
+
+$:移动光标到行尾 n$:移动到第n行的行尾
+0（Num）：移动光标到行首
+^:移动光标到行首第一个非空字符上去
+
+f:移动光标到当前行的字符a上，nf移动光标到当前行的第n个a字符上
+F:相反
+
+%:移动到与制匹配的括号上去（），{}，[]，<>等。
+
+nG:移动到第n行上 G:到最后一行
+
+CTRL＋G 得到当前光标在文件中的位置
+
+向前翻页：CTRL+F
+向下移动半屏：CTRL＋G
+
+向后翻页：CTRL+B
+
+到文件开头 gg
+到文件结尾 shift+g
+```
+
 # find
 ## 查文件夹里包含关键字的文件
 find和grep结合使用
@@ -323,6 +358,10 @@ server1上运行：# tar czvf - nginx-0.6.34|nc 192.168.10.11 1234
 # traceroute
 路由跟踪
 `traceroute www.baidu.com`
+
+# mtr
+全称my traceroute
+和traceroute类似，多了个丢包率的统计
 
 # useradd
 
@@ -883,3 +922,16 @@ dstat命令是一个用来替换vmstat、iostat、netstat、nfsstat和ifstat这�
 ```
 
 ![-w594](media/16052331203245.jpg)
+
+# ps
+## ps -ef各列含义
+![-w811](media/16088899636651.jpg)
+
+UID：用户id
+PID：进程id
+PPID：父进程id
+C：cpu调度情况，CPU用于计算执行优先级的因子。
+STIME：进程启动时间
+TTY：启动线程的终端名，其中？表示该进程是守护进程 [参考文档](http://blog.chinaunix.net/uid-22746363-id-384008.html)
+TIME：进程共占用CPU的时间
+CMD：启动进程的命令
