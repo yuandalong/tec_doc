@@ -494,5 +494,6 @@ http://localhost:8088/ws/v1/cluster/scheduler
 
 ### app指定要使用的队列
 
-spark在submit脚本里加--queue 队列名
-flink在yarn-session.sh或者flink run脚本里使用-qu或者--queue 队列名
+* spark 在submit脚本里加--queue 队列名
+* flink 在yarn-session.sh或者flink run脚本里使用-qu或者--queue 队列名
+* hadoop -D mapreduce.job.queuename=root.etl.distcp
