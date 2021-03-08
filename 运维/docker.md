@@ -134,7 +134,9 @@ docker rmi image_id
 ```
 
 # 常用容器命令
+
 ## 首次启动容器 run
+
 ### 运行容器内应用程序
 
 ```shell
@@ -236,6 +238,30 @@ docker run -d -P training/webapp python app.py
 通过docker port 可以查看指定 （ID 或者名字）容器的某个确定端口映射到宿主机的端口号。
 
 ![](media/15532555374211.jpg)
+
+### 修改已有容器的端口映射
+最简单的方法删除容器之后重新run
+
+#### mac
+1. 查容器id ，`docker ps -a`或者`docker inspect mnginx | grep Id`看完整id
+2. `cd ~/Library/Containers/com.docker.docker/Data/vms/0`
+3. `screen tty`
+    1. 如果screen tty不生效可使用`docker run -it --privileged --pid=host justincormack/nsenter1`  不要修改这个命令，直接执行
+4. `cd /var/lib/docker/containers && ls`
+5. 进入容器id对应的文件夹
+6. 修改config.v2.json和hostconfig.json
+    1. config.v2.json要修改的关键字ExposedPorts
+    2. hostconfig.json修改的关键字PortBindings，前一个数字是容器端口, 后一个是宿主机端口
+7. 修改完保存，退出screen 通过ctrl+a+c退出，退出前建议检查下上面修改的两个文件有没有修改成功，且必须是在容器没运行的情况下修改，否则容器重启后文件又变回原样了
+8. 重启docker，启动容器
+
+#### linux
+
+1. 停止容器(docker stop d00254ce3af7)
+2. 停止docker服务(systemctl stop docker)
+3. 修改这个容器的hostconfig.json和config.v2.json文件中的端口
+4. 启动docker服务(systemctl start docker)
+5. 启动容器(docker start d00254ce3af7)
 
 ## 查看docker日志 logs
 docker logs [ID或者名字] 可以查看容器内部的标准输出

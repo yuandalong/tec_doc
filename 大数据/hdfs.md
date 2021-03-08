@@ -155,6 +155,7 @@ hadoop fs -mv hdfs://host:port/file1 hdfs://host:port/file2 hdfs://host:port/fil
 
 ## put
 使用方法：hadoop fs -put <localsrc> ... <dst>
+-put -f 会强制覆盖
 
 从本地文件系统中复制单个或多个源路径到目标文件系统。也支持从标准输入中读取输入写入目标文件系统。
 
@@ -257,6 +258,19 @@ hadoop fs -rmr hdfs://host:port/user/hadoop/dir
 `hadoop -touchz pathname`
 返回值：
 成功返回0，失败返回-1。
+
+## 修改文件
+如果只想append操作：
+
+`echo "<Text to append>" | hdfs dfs -appendToFile - yourHdfsPath/test.txt `
+
+如果想modify操作：
+
+```shell
+hdfs dfs -get yourHdfsPath/test.txt
+vi test.txt #or use any other tool and modify it
+hdfs dfs -put -f test.txt yourHdfsPath/test.txt
+```
 
 # hadoop fs,hadoop dfs以及hdfs dfs区别
 - hadoop fs

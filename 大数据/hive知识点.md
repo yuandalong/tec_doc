@@ -253,6 +253,7 @@ truncate table 表名;
 ```
 
 #### 外部表
+
 外部表先清空元数据，然后删除hdfs上的文件
 
 ```sql
@@ -266,13 +267,21 @@ alter table dw_zzpt_crawl_log_month drop partition(dt<='20200931')
 hdfs dfs -rm -r /home/user/hive/warehouse/dw.db/dw_zzpt_crawl_log_month/dt=202009*
 ```
 由于外部表不能直接删除，所以用shell命令执行
+
 ```shell
 #!/bin/bash
 temp=$(date +%Y-%m-%d)
 temp2=$(date -d "-1 day" +%Y-%m-%d)
 hdfs dfs -rm -r /user/hive/test_table/partition_date=${temp}
-
 ```
+
+### 删除表
+`drop table table_name`
+
+
+### 删除库
+`drop database database_name`
+
 ### 修改表结构
 
 ```sql
@@ -313,6 +322,20 @@ ALTER TABLE employee RENAME TO emp;
 
 #### 查看完成表结构信息
 `desc formatted table_name`
+
+#### 查表的分区信息
+查询某个表的分区信息：
+
+`SHOW PARTITIONS employee;`
+
+查看某个表是否存在某个特定分区键
+
+`SHOW PARTITIONS employee PARTITION(country='US')`
+
+`DESCRIBE EXTENDED employee PARTITION(country='US')`
+
+#### 查看建表语句
+`show create table table_name`
 
 ### 分区
 Hive组织表到分区。它是将一个表到基于分区列，如日期，城市和部门的值相关方式。使用分区，很容易对数据进行部分查询。
@@ -376,6 +399,9 @@ set  hive.exec.max.dynamic.partitions.pernode=1000;
 --动态分区字段一定要放在所有静态字段的后面，这里业务字段在前，最后 a.province, 
 --a.city作为动态分区字段会被赋到PARTITION (province, city)中  
 INSERT OVERWRITE TABLE t2 PARTITION (province, city) SELECT ....... , a.province, a.city FROM a;
+--插入单条指定数据的话select部分改成 select 1,2 from a limit 1这种,注意limit别漏了，要不然a表里有多少条就插入多少条了，而且a表必须是有数据的表，不能是空表，空表的话select语句不会返回数据，所以就不会插入数据到表里了
+
+
 ```
 
 ### 视图
