@@ -708,7 +708,7 @@ Kafka把topic中一个parition大文件分成多个小文件段，通过多个�
 
 # kafka中zookeeper的使用
 
-在基于 Kafka 的分布式消息队列中，ZooKeeper 的作用有 Broker 注册、Topic 注册、Producer 和 Consumer 负载均衡、维护 Partition 与 Consumer 的关系、记录消息消费的进度以及 Consumer 注册等。
+在基于 Kafka 的分布式消息队列中，ZooKeeper 的作用有 Broker 注册、Topic 注册、Producer 和 Consumer 负载均衡、维护 Partition 与 Consumer 的关系、记录消息消费的进度以及 Consumer 注册等。 
 
 ## 1.Broker 在 ZooKeeper 中的注册
 为了便于大家理解，我首先解释下“注册”一词。ZooKeeper 是一个共享配置中心，我们可以将一些信息存放入其中，比如 Broker 信息，本质上就是存放一个文件目录。这个配置中心是共享的，分布式系统的各个节点都可以从配置中心访问到相关信息。同时，ZooKeeper 还具有 Watch 机制（Raft 算法），一旦注册信息发生变化，比如某个注册的 Broker 下线，ZooKeeper 就会删除与之相关的注册信息，其它节点可以通过 Watch 机制监听到这一变化，进而做出响应。
