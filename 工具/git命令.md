@@ -295,10 +295,12 @@ git show v1.0
 git tag -a v0.1 -m "version 0.1 released" 3628164
 //删除标签 因为创建的标签都只存储在本地，不会自动推送到远程。所以，打错的标签可以在本地安全删除
 git tag -d v1.0
-//推送标签到远程仓库
+//推送指定标签到远程仓库
 git push origin v1.0
 //一次性推送全部尚未推送到远程的本地标签
 git push origin --tags
+or
+git push --tags
 //删除远程仓库标签，需先删除本地，然后从远程删除
 git tag -d v1.0
 git push origin :refs/tags/v1.0

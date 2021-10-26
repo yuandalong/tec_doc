@@ -991,6 +991,144 @@ one error found
 
 ```
 
+## 模式匹配
+模式匹配是检查某个值（value）是否匹配某一个模式的机制，一个成功的匹配同时会将匹配值解构为其组成部分。它是Java中的switch语句的升级版，同样可以用于替代一系列的 if/else 语句。
+
+### 语法
+
+一个模式匹配语句包括一个待匹配的值，match关键字，以及至少一个case语句。
+
+```scala
+import scala.util.Random
+
+val x: Int = Random.nextInt(10)
+
+x match {
+  case 0 => "zero"
+  case 1 => "one"
+  case 2 => "two"
+  case _ => "other"
+}
+```
+上述代码中的val x是一个0到10之间的随机整数，将它放在match运算符的左侧对其进行模式匹配，match的右侧是包含4条case的表达式，其中最后一个case _表示匹配其余所有情况，在这里就是其他可能的整型值。
+
+match表达式具有一个结果值
+
+```scala
+def  matchTest(x: Int): String = x match {
+  case 1 => "one"
+  case 2 => "two"
+  case _ => "other"
+}
+matchTest(3)  // other
+matchTest(1)  // one
+```
+
+这个match表达式是String类型的，因为所有的情况（case）均返回String，所以matchTest函数的返回值是String类型。
+
+### 案例类（case classes）的匹配
+
+案例类非常适合用于模式匹配。
+
+```scala
+abstract class Notification
+
+case class Email(sender: String, title: String, body: String) extends Notification
+
+case class SMS(caller: String, message: String) extends Notification
+
+case class VoiceRecording(contactName: String, link: String) extends Notification
+```
+
+
+Notification 是一个虚基类，它有三个具体的子类Email, SMS和VoiceRecording，我们可以在这些案例类(Case Class)上像这样使用模式匹配：
+
+```scala
+def showNotification(notification: Notification): String = {
+  notification match {
+    case Email(sender, title, _) =>
+      s"You got an email from $sender with title: $title"
+    case SMS(number, message) =>
+      s"You got an SMS from $number! Message: $message"
+    case VoiceRecording(name, link) =>
+      s"you received a Voice Recording from $name! Click the link to hear it: $link"
+  }
+}
+val someSms = SMS("12345", "Are you there?")
+val someVoiceRecording = VoiceRecording("Tom", "voicerecording.org/id/123")
+
+println(showNotification(someSms))  // prints You got an SMS from 12345! Message: Are you there?
+
+println(showNotification(someVoiceRecording))  // you received a Voice Recording from Tom! Click the link to hear it: voicerecording.org/id/123
+```
+showNotification函数接受一个抽象类Notification对象作为输入参数，然后匹配其具体类型。（也就是判断它是一个Email，SMS，还是VoiceRecording）。在case Email(sender, title, _)中，对象的sender和title属性在返回值中被使用，而body属性则被忽略，故使用_代替。
+
+### 模式守卫（Pattern gaurds）
+
+为了让匹配更加具体，可以使用模式守卫，也就是在模式后面加上if <boolean expression>。
+
+```scala
+def showImportantNotification(notification: Notification, importantPeopleInfo: Seq[String]): String = {
+  notification match {
+    case Email(sender, _, _) if importantPeopleInfo.contains(sender) =>
+      "You got an email from special someone!"
+    case SMS(number, _) if importantPeopleInfo.contains(number) =>
+      "You got an SMS from special someone!"
+    case other =>
+      showNotification(other) // nothing special, delegate to our original showNotification function
+  }
+}
+
+val importantPeopleInfo = Seq("867-5309", "jenny@gmail.com")
+
+val someSms = SMS("867-5309", "Are you there?")
+val someVoiceRecording = VoiceRecording("Tom", "voicerecording.org/id/123")
+val importantEmail = Email("jenny@gmail.com", "Drinks tonight?", "I'm free after 5!")
+val importantSms = SMS("867-5309", "I'm here! Where are you?")
+
+println(showImportantNotification(someSms, importantPeopleInfo))
+println(showImportantNotification(someVoiceRecording, importantPeopleInfo))
+println(showImportantNotification(importantEmail, importantPeopleInfo))
+println(showImportantNotification(importantSms, importantPeopleInfo))
+```
+在case Email(sender, _, _) if importantPeopleInfo.contains(sender)中，除了要求notification是Email类型外，还需要sender在重要人物列表importantPeopleInfo中，才会匹配到该模式。
+
+### 仅匹配类型
+
+也可以仅匹配类型，如下所示：
+
+```scala
+abstract class Device
+case class Phone(model: String) extends Device {
+  def screenOff = "Turning screen off"
+}
+case class Computer(model: String) extends Device {
+  def screenSaverOn = "Turning screen saver on..."
+}
+
+def goIdle(device: Device) = device match {
+  case p: Phone => p.screenOff
+  case c: Computer => c.screenSaverOn
+}
+```
+当不同类型对象需要调用不同方法时，仅匹配类型的模式非常有用，如上代码中goIdle函数对不同类型的Device有着不同的表现。一般使用类型的首字母作为case的标识符，例如上述代码中的p和c，这是一种惯例。
+
+### 密封类
+
+特质（trait）和类（class）可以用**sealed**标记为密封的，这意味着其所有子类都必须与之定义在相同文件中，从而保证所有子类型都是已知的。
+
+```scala
+sealed abstract class Furniture
+case class Couch() extends Furniture
+case class Chair() extends Furniture
+
+def findPlaceToSit(piece: Furniture): String = piece match {
+  case a: Couch => "Lie on the couch"
+  case b: Chair => "Sit on the chair"
+}
+```
+这对于模式匹配很有用，因为我们不再需要一个匹配其他任意情况的case。
+
 ## 特质（trait）
 
 特质 (Traits) 用于在类 (Class)之间共享程序接口 (Interface)和字段 (Fields)。 它们类似于Java 8的接口。 类和对象 (Objects)可以扩展特质，**但是特质不能被实例化，因此特质没有参数。**
@@ -1272,7 +1410,9 @@ case class WeeklyWeatherForecast(temperatures: Seq[Double]) {
   def forecastInFahrenheit: Seq[Double] = temperatures.map(convertCtoF) // <-- passing the method convertCtoF
 }
 
-```在这个例子中，方法convertCtoF被传入forecastInFahrenheit。这是可以的，因为编译器强制将方法convertCtoF转成了函数x => convertCtoF(x) （注: x是编译器生成的变量名，保证在其作用域是唯一的）。
+```
+
+在这个例子中，方法convertCtoF被传入forecastInFahrenheit。这是可以的，因为编译器强制将方法convertCtoF转成了函数x => convertCtoF(x) （注: x是编译器生成的变量名，保证在其作用域是唯一的）。
 
 ## FUTURE和PROMISE 异步
 
@@ -1777,4 +1917,653 @@ val d4 = Duration("1.2 µs") // from String
 
 // pattern matching
 val Duration(length, unit) = 5 millis
+```
+
+# 类型参数
+
+## 泛型
+[原文链接](https://blog.csdn.net/m0_37809146/article/details/91287193)
+
+Scala 支持类型参数化，使得我们能够编写泛型程序。
+
+### 泛型类
+
+Java 中使用 <> 符号来包含定义的类型参数，Scala 则使用 []。
+
+```scala
+class Pair[T, S](val first: T, val second: S) {
+  override def toString: String = first + ":" + second
+}
+```
+
+```scala
+object ScalaApp extends App {
+
+  // 使用时候你直接指定参数类型，也可以不指定，由程序自动推断
+  val pair01 = new Pair("heibai01", 22)
+  val pair02 = new Pair[String,Int]("heibai02", 33)
+
+  println(pair01)
+  println(pair02)
+}
+```
+
+### 泛型方法
+
+函数和方法也支持类型参数。
+
+```scala
+object Utils {
+  def getHalf[T](a: Array[T]): Int = a.length / 2
+}
+
+```
+
+## 类型限定
+
+### 类型上界限定
+
+Scala 和 Java 一样，对于对象之间进行大小比较，要求被比较的对象实现 java.lang.Comparable 接口。所以如果想对泛型进行比较，需要限定类型上界为 java.lang.Comparable，语法为 S <: T，代表类型 S 是类型 T 的子类或其本身。示例如下：
+
+```scala
+// 使用 <: 符号，限定 T 必须是 Comparable[T]的子类型
+class Pair[T <: Comparable[T]](val first: T, val second: T) {
+  // 返回较小的值
+  def smaller: T = if (first.compareTo(second) < 0) first else second
+}
+```
+
+```scala
+// 测试代码
+val pair = new Pair("abc", "abcd")
+println(pair.smaller) // 输出 abc
+```
+
+扩展：如果你想要在 Java 中实现类型变量限定，需要使用关键字 extends 来实现，等价的 Java 代码如下：
+
+```java
+public class Pair<T extends Comparable<T>> {
+private T first;
+private T second;
+Pair(T first, T second) {
+  this.first = first;
+  this.second = second;
+}
+public T smaller() {
+  return first.compareTo(second) < 0 ? first : second;
+}
+}
+```
+
+### 视图界定
+
+在上面的例子中，如果你使用 Int 类型或者 Double 等类型进行测试，点击运行后，你会发现程序根本无法通过编译：
+
+```scala
+val pair1 = new Pair(10, 12)
+val pair2 = new Pair(10.0, 12.0)
+```
+
+之所以出现这样的问题，是因为 Scala 中的 Int 类并没有实现 Comparable 接口。在 Scala 中直接继承 Comparable 接口的是特质 Ordered，它在继承 compareTo 方法的基础上，额外定义了关系符方法，源码如下:
+
+```scala
+// 除了 compareTo 方法外，还提供了额外的关系符方法
+trait Ordered[A] extends Any with java.lang.Comparable[A] {
+  def compare(that: A): Int
+  def <  (that: A): Boolean = (this compare that) <  0
+  def >  (that: A): Boolean = (this compare that) >  0
+  def <= (that: A): Boolean = (this compare that) <= 0
+  def >= (that: A): Boolean = (this compare that) >= 0
+  def compareTo(that: A): Int = compare(that)
+}
+```
+
+之所以在日常的编程中之所以你能够执行 3>2 这样的判断操作，是因为程序执行了定义在 Predef 中的隐式转换方法 intWrapper(x: Int)，将 Int 类型转换为 RichInt 类型，而 RichInt 间接混入了 Ordered 特质，所以能够进行比较。
+
+```scala
+// Predef.scala
+@inline implicit def intWrapper(x: Int)   = new runtime.RichInt(x)
+```
+
+![aHR0cHM6Ly9naXRlZS5jb20vaGVpYmFpeWluZy9CaWdEYXRhLU5vdGVzL3Jhdy9tYXN0ZXIvcGljdHVyZXMvc2NhbGEtcmljaEludC5wbm](media/aHR0cHM6Ly9naXRlZS5jb20vaGVpYmFpeWluZy9CaWdEYXRhLU5vdGVzL3Jhdy9tYXN0ZXIvcGljdHVyZXMvc2NhbGEtcmljaEludC5wbmc.png)
+
+
+要想解决传入数值无法进行比较的问题，可以使用视图界定。语法为 T <% U，代表 T 能够通过隐式转换转为 U，即允许 Int 型参数在无法进行比较的时候转换为 RichInt 类型。示例如下：
+
+```scala
+// 视图界定符号 <%
+class Pair[T <% Comparable[T]](val first: T, val second: T) {
+  // 返回较小的值
+  def smaller: T = if (first.compareTo(second) < 0) first else second
+}
+```
+
+注：由于直接继承 Java 中 Comparable 接口的是特质 Ordered，所以如下的视图界定和上面是等效的：
+
+```scala
+// 隐式转换为 Ordered[T]
+class Pair[T <% Ordered[T]](val first: T, val second: T) {
+def smaller: T = if (first.compareTo(second) < 0) first else second
+}
+```
+
+### 类型约束
+
+如果你用的 Scala 是 2.11+，会发现视图界定已被标识为废弃。官方推荐使用类型约束 (type constraint) 来实现同样的功能，其本质是使用隐式参数进行隐式转换，示例如下：
+
+```scala
+ // 1.使用隐式参数隐式转换为 Comparable[T]
+class Pair[T](val first: T, val second: T)(implicit ev: T => Comparable[T]) 
+  def smaller: T = if (first.compareTo(second) < 0) first else second
+}
+
+// 2.由于直接继承 Java 中 Comparable 接口的是特质 Ordered，所以也可以隐式转换为 Ordered[T]
+class Pair[T](val first: T, val second: T)(implicit ev: T => Ordered[T]) {
+  def smaller: T = if (first.compareTo(second) < 0) first else second
+}
+```
+
+当然，隐式参数转换也可以运用在具体的方法上：
+
+```scala
+object PairUtils{
+  def smaller[T](a: T, b: T)(implicit order: T => Ordered[T]) = if (a < b) a else b
+}
+1
+2
+3
+```
+
+### 上下文界定
+
+上下文界定的形式为 T:M，其中 M 是一个泛型，它要求必须存在一个类型为 M[T]的隐式值，当你声明一个带隐式参数的方法时，需要定义一个隐式默认值。所以上面的程序也可以使用上下文界定进行改写：
+
+```scala
+class Pair[T](val first: T, val second: T) {
+  // 请注意 这个地方用的是 Ordering[T]，而上面视图界定和类型约束，用的是 Ordered[T]，两者的区别会在后文给出解释
+  def smaller(implicit ord: Ordering[T]): T = if (ord.compare(first, second) < 0) first else second 
+}
+
+// 测试
+val pair= new Pair(88, 66)
+println(pair.smaller)  //输出：66
+```
+
+在上面的示例中，我们无需手动添加隐式默认值就可以完成转换，这是因为 Scala 自动引入了 Ordering[Int]这个隐式值。为了更好的说明上下文界定，下面给出一个自定义类型的比较示例：
+
+```scala
+// 1.定义一个人员类
+class Person(val name: String, val age: Int) {
+  override def toString: String = name + ":" + age
+}
+
+// 2.继承 Ordering[T],实现自定义比较器,按照自己的规则重写比较方法
+class PersonOrdering extends Ordering[Person] {
+  override def compare(x: Person, y: Person): Int = if (x.age > y.age) 1 else -1
+}
+
+class Pair[T](val first: T, val second: T) {
+  def smaller(implicit ord: Ordering[T]): T = if (ord.compare(first, second) < 0) first else second
+}
+
+
+object ScalaApp extends App {
+
+  val pair = new Pair(new Person("hei", 88), new Person("bai", 66))
+  // 3.定义隐式默认值,如果不定义,则下一行代码无法通过编译
+  implicit val ImpPersonOrdering = new PersonOrdering
+  println(pair.smaller) //输出： bai:66
+}
+```
+
+### ClassTag上下文界定
+
+这里先看一个例子：下面这段代码，没有任何语法错误，但是在运行时会抛出异常：Error: cannot find class tag for element type T, 这是由于 Scala 和 Java 一样，都存在类型擦除，即泛型信息只存在于代码编译阶段，在进入 JVM 之前，与泛型相关的信息会被擦除掉。对于下面的代码，在运行阶段创建 Array 时，你必须明确指明其类型，但是此时泛型信息已经被擦除，导致出现找不到类型的异常。
+
+```scala
+object ScalaApp extends App {
+  def makePair[T](first: T, second: T) = {
+    // 创建以一个数组 并赋值
+    val r = new Array[T](2); r(0) = first; r(1) = second; r
+  }
+}
+```
+Scala 针对这个问题，提供了 ClassTag 上下文界定，即把泛型的信息存储在 ClassTag 中，这样在运行阶段需要时，只需要从 ClassTag 中进行获取即可。其语法为 T : ClassTag，示例如下：
+
+```scala
+import scala.reflect._
+object ScalaApp extends App {
+  def makePair[T : ClassTag](first: T, second: T) = {
+    val r = new Array[T](2); r(0) = first; r(1) = second; r
+  }
+}
+```
+
+### 类型下界限定
+
+Scala 同时也支持下界的限定，语法为：U >: T，即 U 必须是类型 T 的超类或本身。
+
+```scala
+// 首席执行官
+class CEO
+
+// 部门经理
+class Manager extends CEO
+
+// 本公司普通员工
+class Employee extends Manager
+
+// 其他公司人员
+class OtherCompany
+
+object ScalaApp extends App {
+
+  // 限定：只有本公司部门经理以上人员才能获取权限
+  def Check[T >: Manager](t: T): T = {
+    println("获得审核权限")
+    t
+  }
+
+  // 错误写法: 省略泛型参数后,以下所有人都能获得权限,显然这是不正确的
+  Check(new CEO)
+  Check(new Manager)
+  Check(new Employee)
+  Check(new OtherCompany)
+
+
+  // 正确写法,传入泛型参数
+  Check[CEO](new CEO)
+  Check[Manager](new Manager)
+  /*
+   * 以下两条语句无法通过编译,异常信息为: 
+   * do not conform to method Check's type parameter bounds(不符合方法 Check 的类型参数边界)
+   * 这种情况就完成了下界限制，即只有本公司经理及以上的人员才能获得审核权限
+   */
+  Check[Employee](new Employee)
+  Check[OtherCompany](new OtherCompany)
+}
+```
+
+### 多重界定
+
+类型变量可以同时有上界和下界。 写法为 ：T > : Lower <: Upper；
+
+不能同时有多个上界或多个下界 。但可以要求一个类型实现多个特质，写法为 :
+
+T < : Comparable[T] with Serializable with Cloneable；
+
+你可以有多个上下文界定，写法为 T : Ordering : ClassTag 。
+
+## Ordering & Ordered
+
+上文中使用到 Ordering 和 Ordered 特质，它们最主要的区别在于分别继承自不同的 Java 接口：Comparable 和 Comparator：
+
+* Comparable：可以理解为内置的比较器，实现此接口的对象可以与自身进行比较；
+* Comparator：可以理解为外置的比较器；当对象自身并没有定义比较规则的时候，可以传入外部比较器进行比较。
+为什么 Java 中要同时给出这两个比较接口，这是因为你要比较的对象不一定实现了 Comparable 接口，而你又想对其进行比较，这时候当然你可以修改代码实现 Comparable，但是如果这个类你无法修改 (如源码中的类)，这时候就可以使用外置的比较器。同样的问题在 Scala 中当然也会出现，所以 Scala 分别使用了 Ordering 和 Ordered 来继承它们。
+
+![1](media/aHR0cHM6Ly9naXRlZS5jb20vaGVpYmFpeWluZy9CaWdEYXRhLU5vdGVzL3Jhdy9tYXN0ZXIvcGljdHVyZXMvc2NhbGEtb3JkZXJlZC1vcmRlcmluZy5wbmc.png)
+
+
+下面分别给出 Java 中 Comparable 和 Comparator 接口的使用示例：
+
+### Comparable
+
+```scala
+import java.util.Arrays;
+// 实现 Comparable 接口
+public class Person implements Comparable<Person> {
+
+    private String name;
+    private int age;
+
+    Person(String name,int age) {this.name=name;this.age=age;}
+    @Override
+    public String toString() { return name+":"+age; }
+
+    // 核心的方法是重写比较规则，按照年龄进行排序
+    @Override
+    public int compareTo(Person person) {
+        return this.age - person.age;
+    }
+
+    public static void main(String[] args) {
+        Person[] peoples= {new Person("hei", 66), new Person("bai", 55), new Person("ying", 77)};
+        Arrays.sort(peoples);
+        Arrays.stream(peoples).forEach(System.out::println);
+    }
+}
+
+输出：
+bai:55
+hei:66
+ying:77
+```
+
+### Comparator
+
+```scala
+import java.util.Arrays;
+import java.util.Comparator;
+
+public class Person {
+
+    private String name;
+    private int age;
+
+    Person(String name,int age) {this.name=name;this.age=age;}
+    @Override
+    public String toString() { return name+":"+age; }
+
+    public static void main(String[] args) {
+        Person[] peoples= {new Person("hei", 66), new Person("bai", 55), new Person("ying", 77)};
+        // 这里为了直观直接使用匿名内部类,实现 Comparator 接口
+        //如果是 Java8 你也可以写成 Arrays.sort(peoples, Comparator.comparingInt(o -> o.age));
+        Arrays.sort(peoples, new Comparator<Person>() {
+            @Override
+            public int compare(Person o1, Person o2) {
+                return o1.age-o2.age;
+            }
+        });
+        Arrays.stream(peoples).forEach(System.out::println);
+    }
+}
+```
+
+使用外置比较器还有一个好处，就是你可以随时定义其排序规则：
+
+```scala
+// 按照年龄大小排序
+Arrays.sort(peoples, Comparator.comparingInt(o -> o.age));
+Arrays.stream(peoples).forEach(System.out::println);
+// 按照名字长度倒序排列
+Arrays.sort(peoples, Comparator.comparingInt(o -> -o.name.length()));
+Arrays.stream(peoples).forEach(System.out::println);
+
+```
+
+### 上下文界定的优点
+
+这里再次给出上下文界定中的示例代码作为回顾：
+
+```scala
+// 1.定义一个人员类
+class Person(val name: String, val age: Int) {
+  override def toString: String = name + ":" + age
+}
+
+// 2.继承 Ordering[T],实现自定义比较器,这个比较器就是一个外置比较器
+class PersonOrdering extends Ordering[Person] {
+  override def compare(x: Person, y: Person): Int = if (x.age > y.age) 1 else -1
+}
+
+class Pair[T](val first: T, val second: T) {
+  def smaller(implicit ord: Ordering[T]): T = if (ord.compare(first, second) < 0) first else second
+}
+
+
+object ScalaApp extends App {
+
+  val pair = new Pair(new Person("hei", 88), new Person("bai", 66))
+  // 3.在当前上下文定义隐式默认值,这就相当于传入了外置比较器
+  implicit val ImpPersonOrdering = new PersonOrdering
+  println(pair.smaller) //输出： bai:66
+}
+```
+
+使用上下文界定和 Ordering 带来的好处是：传入 Pair 中的参数不一定需要可比较，只要在比较时传入外置比较器即可。
+
+需要注意的是由于隐式默认值二义性的限制，你不能像上面 Java 代码一样，在同一个上下文作用域中传入两个外置比较器，即下面的代码是无法通过编译的。但是你可以在不同的上下文作用域中引入不同的隐式默认值，即使用不同的外置比较器。
+
+```scala
+implicit val ImpPersonOrdering = new PersonOrdering
+println(pair.smaller) 
+implicit val ImpPersonOrdering2 = new PersonOrdering
+println(pair.smaller)
+```
+
+## 通配符
+
+在实际编码中，通常需要把泛型限定在某个范围内，比如限定为某个类及其子类。因此 Scala 和 Java 一样引入了通配符这个概念，用于限定泛型的范围。不同的是 Java 使用 ? 表示通配符，Scala 使用 _ 表示通配符。
+
+```scala
+class Ceo(val name: String) {
+  override def toString: String = name
+}
+
+class Manager(name: String) extends Ceo(name)
+
+class Employee(name: String) extends Manager(name)
+
+class Pair[T](val first: T, val second: T) {
+  override def toString: String = "first:" + first + ", second: " + second
+}
+
+object ScalaApp extends App {
+  // 限定部门经理及以下的人才可以组队
+  def makePair(p: Pair[_ <: Manager]): Unit = {println(p)}
+  makePair(new Pair(new Employee("heibai"), new Manager("ying")))
+}
+```
+
+目前 Scala 中的通配符在某些复杂情况下还不完善，如下面的语句在 Scala 2.12 中并不能通过编译：
+
+```scala
+def min[T <: Comparable[_ >: T]](p: Pair[T]) ={}
+```
+
+可以使用以下语法代替：
+
+```scala
+type SuperComparable[T] = Comparable[_ >: T]
+def min[T <: SuperComparable[T]](p: Pair[T]) = {}
+```
+
+# 通配符的用法
+
+[原文链接](https://blog.csdn.net/yaoyaostep/article/details/78633453)
+
+## 用于替换Java的等价语法
+
+由于大部分的Java关键字在Scala中拥有了新的含义，所以一些基本的语法在Scala中稍有变化。
+
+### 导入通配符
+
+在Scala中是合法的方法名，所以导入包时要使用_代替。
+
+```scala
+//Java
+import java.util.*;
+ 
+//Scala
+import java.util._
+```
+
+### 类成员默认值
+
+Java中类成员可以不赋初始值，编译器会自动帮你设置一个合适的初始值：
+
+```scala
+class Foo{
+     //String类型的默认值为null
+     String s;
+}
+```
+
+而在Scala中必须要显式指定，如果你比较懒，可以用_让编译器自动帮你设置初始值：
+
+```scala
+class Foo{
+    //String类型的默认值为null
+    var s: String = _
+}
+```
+> 该语法只适用于类成员，而不适用于局部变量。
+
+### 可变参数
+
+Java声明可变参数如下：
+
+```scala
+public static void printArgs(String ... args){
+    for(Object elem: args){
+        System.out.println(elem + " ");
+    }
+}
+```
+调用方法如下：
+
+```scala
+ //传入两个参数
+printArgs("a", "b");
+//也可以传入一个数组
+printArgs(new String[]{"a", "b"});
+```
+在Java中可以直接将数组传给printArgs方法，但是在Scala中，你必须要明确的告诉编译器，你是想将集合作为一个独立的参数传进去，还是想将集合的元素传进去。如果是后者则要借助下划线：
+
+```scala
+printArgs(List("a", "b"): _*)
+```
+
+### 类型通配符
+
+Java的泛型系统有一个通配符类型，例如List<?>，任意的List<T>类型都是List<?>的子类型，如果我们想编写一个可以打印所有List类型元素的方法，可以如下声明：
+
+```java
+public static void printList(List<?> list){
+    for(Object elem: list){
+        System.out.println(elem + " ");
+    }
+}
+```
+对应的Scala版本为：
+
+```scala
+def printList(list: List[_]): Unit ={
+   list.foreach(elem => println(elem + " "))
+}
+```
+
+## 模式匹配
+
+### 默认匹配
+
+```scala
+str match{
+    case "1" => println("match 1")
+    case _   => println("match default")
+}
+```
+
+### 匹配集合元素
+
+```scala
+//匹配以0开头，长度为三的列表
+expr match {
+  case List(0, _, _) => println("found it")
+  case _ =>
+}
+ 
+//匹配以0开头，长度任意的列表
+expr match {
+  case List(0, _*) => println("found it")
+  case _ =>
+}
+ 
+//匹配元组元素
+expr match {
+  case (0, _) => println("found it")
+  case _ =>
+}
+ 
+//将首元素赋值给head变量
+val List(head, _*) = List("a")
+```
+
+## Scala特有语法
+
+### 访问Tuple元素
+
+```scala
+val t = (1, 2, 3)
+println(t._1, t._2, t._3)
+```
+
+### 简写函数字面量（function literal）
+
+如果函数的参数在函数体内只出现一次，则可以使用下划线代替：
+
+```scala
+val f1 = (_: Int) + (_: Int)
+//等价于
+val f2 = (x: Int, y: Int) => x + y
+ 
+list.foreach(println(_))
+//等价于
+list.foreach(e => println(e))
+ 
+list.filter(_ > 0)
+//等价于
+list.filter(x => x > 0)
+```
+
+### 定义一元操作符
+
+在Scala中，操作符其实就是方法，例如1 + 1等价于1.+(1)，利用下划线我们可以定义自己的左置操作符，例如Scala中的负数就是用左置操作符实现的：
+
+```scala
+-2
+//等价于
+2.unary_-
+```
+
+### 定义赋值操作符
+
+我们通过下划线实现赋值操作符，从而可以精确地控制赋值过程：
+
+```scala
+   class Foo {
+      def name = { "foo" }
+      def name_=(str: String) {
+        println("set name " + str)
+   }
+ 
+    val m = new Foo()
+    m.name = "Foo" //等价于: m.name_=("Foo")
+```
+
+### 定义部分应用函数（partially applied function）
+
+我们可以为某个函数只提供部分参数进行调用，返回的结果是一个新的函数，即部分应用函数。因为只提供了部分参数，所以部分应用函数也因此而得名。
+
+```scala
+def sum(a: Int, b: Int, c: Int) = a + b + c
+val b = sum(1, _: Int, 3)
+b: Int => Int = <function1>
+b(2) //6
+```
+
+### 将方法转换成函数
+
+Scala中方法和函数是两个不同的概念，方法无法作为参数进行传递，也无法赋值给变量，但是函数是可以的。在Scala中，利用下划线可以将方法转换成函数：
+
+```scala
+//将println方法转换成函数，并赋值给p
+val p = println _  
+//p: (Any) => Unit
+```
+
+# 保留指定位小数
+
+```scala
+"0.01111".toDouble.formatted("%.2f")
+```
+
+# 常用隐式转换
+
+```scala
+# asScala
+import scala.collection.JavaConverters._
+# java collection的遍历
+import scala.collection.JavaConversions._
 ```

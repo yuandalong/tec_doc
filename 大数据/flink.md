@@ -22,6 +22,8 @@ flink和spark一样，默认的日志系统也是log4j，不过要改成logback�
 - log4j-yarn-session.properties -> logback-yarn.xml
 - log4j.properties -> logback.xml
 
+添加logback-classic.jar、logback-core.jar、log4j-over-slf4j.jar到flink的lib目录下，删除log4j的jar包，注意得删除或者改后缀名，不能直接mv到lib目录的子目录下，因为flink启动的时候会加载lib目录子目录的jar
+
 ## flink-conf.yaml
 
 ```yml
@@ -30,8 +32,8 @@ taskmanager.numberOfTaskSlots: 4
 # savepoint目录
 state.savepoints.dir: file:///tmp/savepoint
 # state.savepoints.dir: hdfs://nameservice/flink/savepoints
-# hadoop配置目录 yarn模式的话需要配置 standalone模式不需要
-export HADOOP_CONF_DIR=/etc/hadoop/conf
+# checkpoint目录
+state.checkpoints.dir: hdfs://nameservice/etl_checkpoints
 ```
 
 ## flink on yarn
@@ -42,7 +44,7 @@ flink on yarn 作业提交有两种方式：
 - yarn seesion
     这种方式需要先启动集群，然后在提交作业，接着会向yarn申请一块空间后，资源永远保持不变。如果资源满了，下一个作业就无法提交，只能等到yarn中的其中一个作业执行完成后，释放了资源，那下一个作业才会正常提交.
 - Flink run
-    直接在YARN上提交运行Flink作业(Run a Flink job on YARN)，这种方式的好处是一个任务会对应一个job,即没提交一个作业会根据自身的情况，向yarn申请资源，直到作业执行完成，并不会影响下一个作业的正常运行，除非是yarn上面没有任何资源的情况下。
+    直接在YARN上提交运行Flink作业(Run a Flink job on YARN)，这种方式的好处是一个任务会对应一个job,即每提交一个作业会根据自身的情况，向yarn申请资源，直到作业执行完成，并不会影响下一个作业的正常运行，除非是yarn上面没有任何资源的情况下。
 
 综合以上这2种的示意图如下：
 ![](media/16075830992586.jpg)
@@ -100,14 +102,58 @@ yarn-session.sh加-d参数来启动分离模式的flink集群
 
 通过flink run的yid参数，指定yarn session的id，来将作业提交到指定的集群上
 
-### flink run
-
-对于前面介绍的yarn session需要先启动一个集群，然后在提交作业。对于Flink run直接提交作业就相对比较简单，不需要额外的去启动一个集群，直接提交作业，即可完成Flink作业。
-
-`bin/flink run -m yarn-cluster -d -yn 2 -yjm 2048 -ytm 5120 ./examples/batch/WordCount.jar  --input hdfs://192.168.44.135:9000/user/root/test/LICENSE  --output hdfs://192.168.44.135:9000/user/root/test/result.txt`
 
 
+### 脚本示例
 
+启动
+
+```shell
+export HADOOP_CONF_DIR=/etc/hadoop/conf
+export HADOOP_CLASSPATH=`hadoop classpath`
+# 从stoplog文件里取savepoint路径
+SAVE_POINT=`grep 'Savepoint' stoplog |awk '{print $4}'`
+echo $SAVE_POINT
+./flink-1.12.3/bin/flink run \
+-m yarn-cluster \
+-yqu stream \
+-ytm 2048 \
+-yjm 1024 \
+-ynm etl_flink_test1 \
+-ys 4 \
+-p 4 \
+-n \
+-d \
+-c cn.people.idata.content.etl.actuator.stream.Etl \
+-s $SAVE_POINT \
+/home/prod/middleground/test1/idata-content-etl-actuator-1.0.0.jar > startlog
+```
+
+将启动输出写入到startlog里，里面有flink的jobid，stop的时候会用到
+
+停服
+
+```shell
+export HADOOP_CLASSPATH=`hadoop classpath`
+# 从startlog里取flink jobid
+JOB_ID=`grep 'JobID' startlog |awk '{print $7}'`
+echo $JOB_ID
+APP_ID=`yarn application -list|grep 'etl_flink_test1'|awk '{print $1}'`
+echo $APP_ID
+
+echo "./flink-1.12.3/bin/flink stop -m yarn-cluster ${JOB_ID} -yid ${APP_ID}"
+./flink-1.12.3/bin/flink stop -m yarn-cluster ${JOB_ID} -yid ${APP_ID} > stoplog
+```
+
+将停服输出写入到stoplog里，里面有savepoint信息，启动的时候会用到
+
+参数：
+-n 允许跳过无法恢复的savepoint。 
+-d 以分离模式运行
+-ys yarn里指定每个tm的slot数
+-p 并行度   yarn里tm的个数无法指定，是通过 -p/-ys来决定的
+-s savepoint 路径
+-yid yarn application id
 
 # 命令
 
@@ -175,6 +221,7 @@ Savepoint 是全量做的，每次的时间较长，数据量较大，需要用�
 每次 Modify 命令都会触发一次 Savepoint。
 
 ## info
+
 Info 命令是用来查看 Flink 任务的执行计划（StreamGraph）的。
 `bin/flink info examples/streaming/TopSpeedWindowing.jar`
 
@@ -495,6 +542,173 @@ DataSet同DataStream从其接口封装、真实计算Operator有很大的差别�
 
 流式处理，其结构封装实现输入流的处理，其也实现了丰富的函数支持；
 所有的操作为StreamOperator的子类，实现具体逻辑，比如Join逻辑是在IntervalJoinOperator中实现的；
+
+# checkpoint savepoint的区别与联系
+
+## 概述
+
+checkpoint和savepoint是Flink为我们提供的作业快照机制，它们都包含有作业状态的持久化副本。官方文档这样描述checkpoint：
+
+    Checkpoints make state in Flink fault tolerant by allowing state 
+    and the corresponding stream positions to be recovered, thereby 
+    giving the application the same semantics as a failure-free execution.
+
+而对savepoint的描述是：
+
+    A Savepoint is a consistent image of the execution state of a 
+    streaming job, created via Flink’s checkpointing mechanism. You can 
+    use Savepoints to stop-and-resume, fork, or update your Flink jobs.
+
+下面这张来自Flink 1.1版本文档（更新的版本就不见了）的图示出了checkpoint和savepoint的关系。
+![](media/16215844763889.jpg)
+
+
+用几句话总结一下。
+
+checkpoint的侧重点是“容错”，即Flink作业意外失败并重启之后，能够直接从早先打下的checkpoint恢复运行，且不影响作业逻辑的准确性。而savepoint的侧重点是“维护”，即Flink作业需要在人工干预下手动重启、升级、迁移或A/B测试时，先将状态整体写入可靠存储，维护完毕之后再从savepoint恢复现场。
+
+savepoint是“通过checkpoint机制”创建的，所以savepoint本质上是特殊的checkpoint。
+
+checkpoint面向Flink Runtime本身，由Flink的各个TaskManager定时触发快照并自动清理，一般不需要用户干预；savepoint面向用户，完全根据用户的需要触发与清理。
+
+checkpoint的频率往往比较高（因为需要尽可能保证作业恢复的准确度），所以checkpoint的存储格式非常轻量级，但作为trade-off牺牲了一切可移植（portable）的东西，比如不保证改变并行度和升级的兼容性。savepoint则以二进制形式存储所有状态数据和元数据，执行起来比较慢而且“贵”，但是能够保证portability，如并行度改变或代码升级之后，仍然能正常恢复。
+
+checkpoint是支持增量的（通过RocksDB），特别是对于超大状态的作业而言可以降低写入成本。savepoint并不会连续自动触发，所以savepoint没有必要支持增量。
+
+
+Flink提供了Exactly once特性，是依赖于带有barrier的分布式快照+可部分重发的数据源功能实现的。而分布式快照中，就保存了operator的状态信息。
+
+Flink的失败恢复依赖于 检查点机制 + 可部分重发的数据源。
+
+**检查点机制机制**：checkpoint定期触发，产生快照，快照中记录了：
+    1. 当前检查点开始时数据源（例如Kafka）中消息的offset。
+    2. 记录了所有有状态的operator当前的状态信息（例如sum中的数值）。
+  
+**可部分重发的数据源**：Flink选择最近完成的检查点K，然后系统重放整个分布式的数据流，然后给予每个operator他们在检查点k快照中的状态。数据源被设置为从位置Sk开始重新读取流。例如在Apache Kafka中，那意味着告诉消费者从偏移量Sk开始重新消费。
+
+## Checkpoint
+  Checkpoint是Flink实现容错机制最核心的功能，它能够根据配置周期性地基于Stream中各个Operator/task的状态来生成快照，从而将这些状态数据定期持久化存储下来，当Flink程序一旦意外崩溃时，重新运行程序时可以有选择地从这些快照进行恢复，从而修正因为故障带来的程序数据异常。
+
+  快照的核心概念之一是barrier。 这些barrier被注入数据流并与记录一起作为数据流的一部分向下流动。 barriers永远不会超过记录，数据流严格有序，barrier将数据流中的记录隔离成一系列的记录集合，并将一些集合中的数据加入到当前的快照中，而另一些数据加入到下一个快照中。
+  每个barrier都带有快照的ID，并且barrier之前的记录都进入了该快照。 barriers不会中断流处理，非常轻量级。 来自不同快照的多个barrier可以同时在流中出现，这意味着多个快照可能并发地发生。
+
+### 单流的barrier
+![](media/16215861184574.jpg)
+
+  barrier在数据流源处被注入并行数据流中。快照n的barriers被插入的位置（记之为Sn）是快照所包含的数据在数据源中最大位置。例如，在Apache Kafka中，此位置将是分区中最后一条记录的偏移量。 将该位置Sn报告给checkpoint协调器（Flink的JobManager）。
+  然后barriers向下游流动。当一个中间操作算子从其所有输入流中收到快照n的barriers时，它会为快照n发出barriers进入其所有输出流中。 一旦sink操作算子（流式DAG的末端）从其所有输入流接收到barriers n，它就向checkpoint协调器确认快照n完成。在所有sink确认快照后，意味快照着已完成。
+  一旦完成快照n，job将永远不再向数据源请求Sn之前的记录，因为此时这些记录（及其后续记录）将已经通过整个数据流拓扑，也即是已经被处理结束。
+
+### 多流的barrier
+![](media/16215861648975.jpg)
+
+  接收多个输入流的运算符需要基于快照barriers上对齐(align)输入流。 上图说明了这一点：
+
+* 一旦操作算子从一个输入流接收到快照barriers n，它就不能处理来自该流的任何记录，直到它从其他输入接收到barriers n为止。 否则，它会搞混属于快照n的记录和属于快照n + 1的记录。
+* barriers n所属的流暂时会被搁置。 从这些流接收的记录不会被处理，而是放入输入缓冲区。可以看到1,2,3会一直放在Input buffer，直到另一个输入流的快照到达Operator。
+* 一旦从最后一个流接收到barriers n，操作算子就会发出所有挂起的向后传送的记录，然后自己发出快照n的barriers。
+* 之后，它恢复处理来自所有输入流的记录，在处理来自流的记录之前优先处理来自输入缓冲区的记录。
+
+  state一般指一个具体的task/operator的状态。Flink中包含两种基础的状态：Keyed State和Operator State。
+
+  Keyed State，就是基于KeyedStream上的状态。这个状态是跟特定的key绑定的，对KeyedStream流上的每一个key，可能都对应一个state。
+  Operator State与Keyed State不同，Operator State跟一个特定operator的一个并发实例绑定，整个operator只对应一个state。相比较而言，在一个operator上，可能会有很多个key，从而对应多个keyed state。
+  举例来说，Flink中的Kafka Connector，就使用了operator state。它会在每个connector实例中，保存该实例中消费topic的所有(partition, offset)映射。
+
+   Keyed State和Operator State，可以以两种形式存在：原始状态和托管状态(Raw and Managed State)。
+  托管状态是由Flink框架管理的状态，如ValueState, ListState, MapState等。而raw state即原始状态，由用户自行管理状态具体的数据结构，框架在做checkpoint的时候，使用byte[]来读写状态内容。通常在DataStream上的状态推荐使用托管的状态，当实现一个用户自定义的operator时，会使用到原始状态。
+
+  这里重点说说State-Keyed State，基于key/value的状态接口，这些状态只能用于keyedStream之上。keyedStream上的operator操作可以包含window或者map等算子操作。这个状态是跟特定的key绑定的，对KeyedStream流上的每一个key，都对应一个state。
+  
+  key/value下可用的状态接口：
+
+    ValueState: 状态保存的是一个值，可以通过update()来更新，value()获取。
+    ListState: 状态保存的是一个列表，通过add()添加数据，通过get()方法返回一个Iterable来遍历状态值。
+    ReducingState: 这种状态通过用户传入的reduceFunction，每次调用add方法添加值的时候，会调用reduceFunction，最后合并到一个单一的状态值。
+    MapState：即状态值为一个map。用户通过put或putAll方法添加元素。
+  以上所述的State对象，仅仅用于与状态进行交互（更新、删除、清空等），而真正的状态值，有可能是存在内存、磁盘、或者其他分布式存储系统中。实际上，这些状态有三种存储方式: HeapStateBackend、MemoryStateBackend、FsStateBackend、RockDBStateBackend。
+
+    MemoryStateBackend: state数据保存在java堆内存中，执行checkpoint的时候，会把state的快照数据保存到jobmanager的内存中。
+    FsStateBackend: state数据保存在taskmanager的内存中，执行checkpoint的时候，会把state的快照数据保存到配置的文件系统中，可以使用hdfs等分布式文件系统。
+    RocksDBStateBackend: RocksDB跟上面的都略有不同，它会在本地文件系统中维护状态，state会直接写入本地rocksdb中。同时RocksDB需要配置一个远端的filesystem。RocksDB克服了state受内存限制的缺点，同时又能够持久化到远端文件系统中，比较适合在生产中使用。
+  
+  通过创建一个StateDescriptor，可以得到一个包含特定名称的状态句柄，可以分别创建ValueStateDescriptor、 ListStateDescriptor或ReducingStateDescriptor状态句柄。状态是通过RuntimeContext来访问的，因此只能在RichFunction中访问状态。这就要求UDF时要继承Rich函数，例如RichMapFunction、RichFlatMapFunction等。
+
+### Checkpoint的简单设置
+
+  默认情况下，checkpoint不会被保留，取消程序时即会删除它们，但是可以通过配置保留定期检查点。开启Checkpoint功能，有两种方式。其一是在conf/flink_conf.yaml中做系统设置；其二是针对任务再代码里灵活配置。推荐第二种方式，针对当前任务设置，设置代码如下所示：
+
+```java
+//获取flink的运行环境
+final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+//设置statebackend
+env.setStateBackend(new MemoryStateBackend());
+
+CheckpointConfig config = env.getCheckpointConfig();
+
+// 任务流取消和故障时会保留Checkpoint数据，以便根据实际需要恢复到指定的Checkpoint
+config.enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+
+// 设置checkpoint的周期, 每隔1000 ms进行启动一个检查点
+config.setCheckpointInterval(1000);
+
+// 设置模式为exactly-once
+config.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE);
+
+// 确保检查点之间有至少500 ms的间隔【checkpoint最小间隔】
+config.setMinPauseBetweenCheckpoints(500);
+// 检查点必须在一分钟内完成，或者被丢弃【checkpoint的超时时间】
+config.setCheckpointTimeout(60000);
+// 同一时间只允许进行一个检查点
+config.setMaxConcurrentCheckpoints(1);
+```
+ 
+上面调用enableExternalizedCheckpoints设置为ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION，表示一旦Flink处理程序被cancel后，会保留Checkpoint数据，以便根据实际需要恢复到指定的Checkpoint处理。
+  ExternalizedCheckpointCleanup 可选项如下:
+
+ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION： 取消作业时保留检查点。请注意，在这种情况下，您必须在取消后手动清理检查点状态。
+ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION： 取消作业时删除检查点。只有在作业失败时，检查点状态才可用。
+  默认情况下，如果设置了Checkpoint选项，则Flink只保留最近成功生成的1个Checkpoint，而当Flink程序失败时，可以从最近的这个Checkpoint来进行恢复。但是，如果希望保留多个Checkpoint，并能够根据实际需要选择其中一个进行恢复，这样会更加灵活，比如，发现最近4个小时数据记录处理有问题，希望将整个状态还原到4小时之前。
+Flink可以支持保留多个Checkpoint，需要在Flink的配置文件conf/flink-conf.yaml中，添加如下配置，指定最多需要保存Checkpoint的个数：
+
+`state.checkpoints.num-retained: 20`
+
+  Flink checkpoint目录分别对应的是 jobId，flink提供了在启动之时通过设置 -s 参数指定checkpoint目录, 让新的jobId 读取该checkpoint元文件信息和状态信息，从而达到指定时间节点启动job。
+
+### 注意
+checkpoint时的对齐步骤可能增加流式程序的等待时间。通常，这种额外的延迟大约为几毫秒，但也会见到一些延迟显着增加的情况。 对于要求所有记录始终具有超低延迟（几毫秒）的应用程序，Flink可以在checkpoint期间跳过流对齐。一旦操作算子看到每个输入流的checkpoint barriers，就会写 checkpoint 快照。
+  当跳过对齐时，即使在 checkpoint n的某些 checkpoint barriers 到达之后，操作算子仍继续处理所有输入。这样，操作算子还可以在创建 checkpoint n 的状态快照之前，继续处理属于checkpoint n + 1的数据。 在还原时，这些记录将作为重复记录出现，因为它们都包含在 checkpoint n 的状态快照中，并将作为 checkpoint n 之后数据的一部分进行重复处理。
+
+## Savepoint
+
+  说到Checkpoint不得不介绍Savepoint。Savepoint是通过Flink的检查点机制创建的流作业执行状态的一致图像。可以使用Savepoints来停止和恢复，分叉或更新Flink作业。保存点由两部分组成：稳定存储（例如HDFS，S3，…）上的（通常是大的）二进制文件和（相对较小的）元数据文件的目录。稳定存储上的文件表示作业执行状态图像的净数据。Savepoint的元数据文件以（绝对路径）的形式包含（主要）指向作为Savepoint一部分的稳定存储上的所有文件的指针。
+
+  从概念上讲，Flink的Savepoints与Checkpoints的不同之处在于备份与传统数据库系统中的恢复日志不同。检查点的主要目的是在意外的作业失败时提供恢复机制。
+
+  Checkpoint的生命周期由Flink管理，即Flink创建，拥有和发布Checkpoint，无需用户交互。作为一种恢复和定期触发的方法，Checkpoint实现的两个主要设计目标是：i）being as lightweight to create （轻量级），ii）fast restore （快速恢复）。针对这些目标的优化可以利用某些属性，例如，JobCode在执行尝试之间不会改变。
+  与此相反，Savepoints由用户创建，拥有和删除。它们的用例是planned (计划) 的，manual backup( 手动备份 ) 和 resume（恢复）。例如，这可能是Flink版本的更新，更改Job graph ，更改 parallelism ，分配第二个作业，如红色/蓝色部署，等等。当然，Savepoints必须在终止工作后继续存在。从概念上讲，保存点的生成和恢复成本可能更高，并且更多地关注可移植性和对前面提到的作业更改的支持。
+
+  为了能够在将来升级程序，主要的必要更改是通过uid(String)方法手动指定operator ID 。这些ID用于确定每个运算符的状态。
+
+```java
+DataStream<String> stream = env.
+  // Stateful source (e.g. Kafka) with ID
+  .addSource(new StatefulSource())
+  .uid("source-id") // ID for the source operator
+  .shuffle()
+  // Stateful mapper with ID
+  .map(new StatefulMapper())
+  .uid("mapper-id") // ID for the mapper
+  // Stateless printing sink
+  .print(); // Auto-generated ID
+
+```
+
+  **如果未手动指定ID，则会自动生成这些ID。只要这些ID不变，就可以从保存点自动恢复。生成的ID取决于程序的结构，并且对程序更改很敏感。因此，强烈建议手动分配这些ID。**
+  触发保存点时，会创建一个新的保存点目录，其中将存储数据和元数据。可以通过配置默认目标目录或使用触发器命令指定自定义目标目录来控制此目录的位置。
+
+  
 
 # Flink 常用算子
 
@@ -1157,6 +1371,49 @@ export HADOOP_CLASSPATH=`hadoop classpath`
 ```
 
 注意此处的hadoop classpath并不是让替换成hadoop的jar包路径，而是直接执行这条命令，不要替换任意字符。。。
+
+# 并行度设置
+
+Flink设置并行度的几种方式
+
+## 代码中设置setParallelism()
+
+全局设置：
+`env.setParallelism(3);　`
+
+算子设置（部分设置）：
+`sum(1).setParallelism(3)`
+
+## 客户端CLI设置（或webui直接输入数量）：
+
+`./bin/flink run -p 3`
+
+## 配置文件设置：
+
+修改配置文件设置/conf/flink-conf.yaml的parallelism.defaul数值
+
+## 最大并行度设置
+
+全局设置：
+
+`env.setMaxParallelism(n)`
+ 　　
+算子设置（部分设置）：
+
+`sum(1).setMaxParallelism(n)`
+
+默认的最大并行度是近似于`operatorParallelism + (operatorParallelism / 2)`，下限是127，上线是32768. 
+
+ 
+
+## 总结
+Flink并行度配置优先级 算子>全局env>客户端CLI>配置文件 。
+
+注意：
+* setParallelism()设置的并行度需要小于.setMaxParallelism()设置的最大并行度。
+* 某些算子无法设置并行度，如socketTextStream
+* 本地模式并行度默认为cpu核数
+* 并行度改变会影响任务划分，进而影响task数量，如果task slots数量不满足要求，会导致任务没有足够的资源分配。
 
 # 常用隐式转换
 
@@ -2006,3 +2263,605 @@ object LateDataOnWindow {
   }
 }
 ```
+
+# 并行度
+
+参考文档：
+- [Flink并行度介绍](https://zhuanlan.zhihu.com/p/114454310)
+- [flink 并行度](https://www.jianshu.com/p/5f934b81c496)
+- [flink 并行度 任务链 task分配](https://www.icode9.com/content-4-611130.html)
+
+## worker
+
+每一个worker(TaskManager)是一个JVM进程，它可能会在独立的线程上执行一个或多个subtask。
+
+## slots
+
+为了控制一个worker能接收多少个task，worker通过task slot来进行控制（一个worker至少有一个task slot）。每个task slot表示TaskManager拥有资源的一个固定大小的子集。假如一个TaskManager有三个slot，那么它会将其管理的内存分成三份给各个slot。资源slot化意味着一个subtask将不需要跟来自其他job的subtask竞争被管理的内存，取而代之的是它将拥有一定数量的内存储备。需要注意的是，这里不会涉及到CPU的隔离，slot目前仅仅用来隔离task的受管理的内存。
+
+通过调整task slot的数量，允许用户定义subtask之间如何互相隔离。如果一个TaskManager一个slot，那将意味着每个task group运行在独立的JVM中，而一个TaskManager多个slot意味着更多的subtask可以共享同一个JVM。而在同一个JVM进程中的task将共享TCP连接（基于多路复用）和心跳消息。它们也可能共享数据集和数据结构，因此这减少了每个task的负载。
+![](media/16185622718471.jpg)
+
+
+Task Slot是静态的概念，是指TaskManager具有的并发执行能力，可以通过参数taskmanager.numberOfTaskSlots进行配置.并行度parallelism是动态概念，即TaskManager运行程序时实际使用的并发能力，可以通过参数parallelism.default进行配置。
+![](media/16185622818838.jpg)
+![](media/16185622904574.jpg)
+
+
+
+也就是说，假设一共有3个TaskManager，每一个TaskManager中的分配3个TaskSlot，也就是每个TaskManager可以接收3个task，一共9个TaskSlot，如果我们设置parallelism.default=1，即运行程序默认的并行度为1，9个TaskSlot只用了1个，有8个空闲，因此，设置合适的并行度才能提高效率。
+
+## 并行度
+
+Flink程序的执行具有并行、分布式的特性。
+
+在执行过程中，一个 stream 包含一个或多个 stream partition ，而每一个 operator 包含一个或多个 operator subtask，这些operator subtasks在不同的线程、不同的物理机或不同的容器中彼此互不依赖得执行。
+
+一个特定operator的subtask的个数被称之为其parallelism(并行度)。一个stream的并行度总是等同于其producing operator的并行度。一个程序中，不同的operator可能具有不同的并行度。
+![](media/16185623016788.jpg)
+
+并行可以分为两个方面
+* 数据并行
+    source 并行拉数据 map 并行处理数据
+* 计算并行
+    source 在拉新数据，map 在处理source 之前拉的数据
+
+一个特定算子的 子任务（subtask）的个数被称之为其并行度（parallelism）。
+一般情况下，一个 stream 的并行度，可以认为就是其所有算子中最大的并行度
+
+![](media/16220120648397.jpg)
+
+idea里运行flink程序默认并行度是运行程序机器的核心数量。
+每一个算子都可以单独设置并行。
+`.map((_, 1)).setParallelism(2)`
+
+也可以全局指定并行度。
+
+`val env = ExecutionEnvironment.getExecutionEnvironment.setParallelism(2)`
+
+此时不支持并行的算子 比如
+`env.readTextFile(inputpath)` 
+就会报错,具体情况调整source和sink的并行度
+
+三个位置可以配置并行度
+* flink配置文件中
+* 代码里
+* flink任务提交时
+
+优先级
+**代码>提交>配置文件**
+代码里设置用代码里的，代码里没设置用提交时设置的，都没设置用配置文件中的配置。
+代码里算子单独设置优先级高于全局设置优先级
+可以设置共享组把 task 尽量均匀的分配到整个集群中
+
+Stream在operator之间传输数据的形式可以是one-to-one(forwarding)的模式也可以是redistributing的模式，具体是哪一种形式，取决于operator的种类。
+
+**One-to-one：**stream(比如在source和map operator之间)维护着分区以及元素的顺序。那意味着map operator的subtask看到的元素的个数以及顺序跟source operator的subtask生产的元素的个数、顺序相同，map、fliter、flatMap等算子都是one-to-one的对应关系。（类似于spark中的窄依赖）
+
+**Redistributing：**stream(map()跟keyBy/window之间或者keyBy/window跟sink之间)的分区会发生改变。每一个operator subtask依据所选择的transformation发送数据到不同的目标subtask。例如，keyBy() 基于hashCode重分区、broadcast和rebalance会随机重新分区，这些算子都会引起redistribute过程，而redistribute过程就类似于Spark中的shuffle过程。（类似于spark中的宽依赖）
+
+## task与operator chains
+
+### operator chains(任务链)
+
+operator chains：相同并行度的one to one操作，在Flink中，这样相连的operator 链接在一起形成一个task，原来的operator成为里面的subtask。
+
+将operators链接成task是非常有效的优化：它能减少线程之间的切换和基于缓存区的数据交换，在减少时延的同时提升吞吐量。链接的行为可以在编程API中进行指定。
+
+### OperatorChain的优点
+
+减少线程切换
+减少序列化与反序列化
+减少延迟并且提高吞吐能力
+减少本地通信的开销
+
+### OperatorChain 组成条件
+
+上下游算子并行度一致
+上下游算子之间没有数据shuffle，是one to one的
+![](media/16185623581000.jpg)
+
+把多个算子合并为一个task，原本的算子成为里面的subtask
+
+![](media/16220122793353.jpg)
+
+![](media/16220124656769.jpg)
+
+- one-to-one ：stream维护着分区以及元素的顺序（比如source和map之间）。这意味着map 算子的子任务看到的元素的个数以及顺序跟 source 算子的子任务生产的元素的个数、顺序相同。map、fliter、flatMap等算子都是one-to-one的对应关系。
+- Redistributing：stream的分区会发生改变。每一个算子的子任务依据所选择的transformation发送数据到不同的目标任务。例如，keyBy 基于 hashCode 重分区、而 broadcast 和 rebalance 会随机重新分区，这些算子都会引起redistribute过程，而 redistribute 过程就类似于 Spark 中的 shuffle 过程。
+
+并行度不同的算子之前传递数据会进行重分区，Redistributing类型的算子也会进行重分区。
+例子
+![](media/16220125104157.jpg)
+
+配置文件中默认并行度设置为2 ，提交代码是并行度设置为2
+socket source 并行度只能是1
+flatmap fliter map 并行度都是2 且属于one-to-one 合成任务链
+keyby 属于redistrubuting hash 重分区
+sum print 并行度为2 属于one-to-one
+执行图如下
+![](media/16220125728893.jpg)
+
+当然还可以禁止掉合成任务链
+单个算子不参与合成任务链
+`.flatMap(_.split(" ")).disableChaining()`
+从单个算子开启一个新的任务链
+`.startNewChain()`
+全局不合成任务链
+`env.disableOperatorChaining()`
+下面是一个全局不合成任务链的job执行图,只是在上一个例子的基础上添加了全局不合成任务链。
+![](media/16220126093967.jpg)
+
+## 并行度需要特殊设置的几种场景
+1. source 文件保证数据顺序需要并行度为 1
+    - 默认并行度， 数据顺序乱了
+![](media/16220128959929.jpg) 
+    - 并行度1，顺序对的
+![](media/16220129023415.jpg)
+
+1. sink 只输出到一个文件需要并行度为 1
+    - sink并行度2，输出到两个文件了
+![](media/16220129743025.jpg)
+
+1. socketsource 并行度只能为1
+
+
+# 数据类型以及序列化
+[官方文档](https://ci.apache.org/projects/flink/flink-docs-release-1.9/zh/dev/types_serialization.html)
+Apache Flink 以其独特的方式来处理数据类型以及序列化，这种方式包括它自身的类型描述符、泛型类型提取以及类型序列化框架。 本文档描述了它们背后的概念和基本原理。
+
+## Flink 中的类型处理
+Flink 会尽力推断有关数据类型的大量信息，这些数据会在分布式计算期间被网络交换或存储。 可以把它想象成一个推断表结构的数据库。在大多数情况下，Flink 可以依赖自身透明的推断出所有需要的类型信息。 掌握这些类型信息可以帮助 Flink 实现很多意想不到的特性：
+
+对于使用 POJOs 类型的数据，可以通过指定字段名（比如 dataSet.keyBy("username") ）进行 grouping 、joining、aggregating 操作。 类型信息可以帮助 Flink 在运行前做一些拼写错误以及类型兼容方面的检查，而不是等到运行时才暴露这些问题。
+
+Flink 对数据类型了解的越多，序列化和数据布局方案就越好。 这对 Flink 中的内存使用范式尤为重要（可以尽可能处理堆上或者堆外的序列化数据并且使序列化操作很廉价）。
+
+最后，它还使用户在大多数情况下免于担心序列化框架以及类型注册。
+
+通常在应用运行之前的阶段 (pre-flight phase)，需要数据的类型信息 - 也就是在程序对 DataStream 或者 DataSet 的操作调用之后，在 execute()、print()、count()、collect() 调用之前。
+
+## 最常见问题
+
+用户需要与 Flink 数据类型处理进行交互的最常见问题是：
+
+注册子类型 如果函数签名只包含超类型，但它们实际上在执行期间使用那些类型的子类型，则使 Flink 感知这些子类型可能会大大提高性能。 可以为每一个子类型调用 StreamExecutionEnvironment 或者 ExecutionEnvironment 的 .registerType(clazz) 方法。
+
+注册自定义序列化器： 当 Flink 无法通过自身处理类型时会回退到 Kryo 进行处理。 并非所有的类型都可以被 Kryo (或者 Flink ) 处理。例如谷歌的 Guava 集合类型默认情况下是没办法很好处理的。 解决方案是为这些引起问题的类型注册额外的序列化器。调用 StreamExecutionEnvironment 或者 ExecutionEnvironment 的 .getConfig().addDefaultKryoSerializer(clazz, serializer) 方法注册 Kryo 序列化器。存在很多的额外 Kryo 序列化器类库 具体细节可以参看 自定义序列化器 以了解更多的自定义序列化器。
+
+添加类型提示 有时， Flink 用尽一切手段也无法推断出泛型类型，用户需要提供类型提示。通常只在 Java API 中需要。 类型提示部分 描述了更多的细节。
+
+手动创建 TypeInformation： 这可能是某些 API 调用所必需的，因为 Java 的泛型类型擦除会导致 Flink 无法推断出数据类型。 参考 创建 TypeInformation 或者 TypeSerializer
+
+## Flink 的 TypeInformation 类
+类 TypeInformation 是所有类型描述符的基类。该类表示类型的基本属性，并且可以生成序列化器，在一些特殊情况下可以生成类型的比较器。 (请注意，Flink 中的比较器不仅仅是定义顺序 - 它们是处理键的基础工具)
+
+Flink 内部对类型做了如下区分：
+
+* 基础类型：所有的 Java 主类型（primitive）以及他们的包装类，再加上 void、String、Date、BigDecimal 以及 BigInteger。
+
+* 主类型数组（primitive array）以及对象数组
+
+* 复合类型
+
+    * Flink 中的 Java 元组 (Tuples) (元组是 Flink Java API 的一部分)：最多支持25个字段，null 是不支持的。
+    
+    * Scala 中的 case classes (包括 Scala 元组)：null 是不支持的。
+    
+    * Row：具有任意数量字段的元组并且支持 null 字段。。
+    
+    * POJOs: 遵循某种类似 bean 模式的类。
+
+* 辅助类型 (Option、Either、Lists、Maps 等)
+
+* 泛型类型：这些不是由 Flink 本身序列化的，而是由 Kryo 序列化的。
+
+POJOs 是特别有趣的，因为他们支持复杂类型的创建以及在键的定义中直接使用字段名： dataSet.join(another).where("name").equalTo("personName") 它们对运行时也是透明的，并且可以由 Flink 非常高效地处理。
+
+### POJO 类型的规则
+
+如果满足以下条件，Flink 会将数据类型识别为 POJO 类型（并允许“按名称”引用字段）：
+
+该类是公有的 (public) 和独立的（没有非静态内部类）
+该类拥有公有的无参构造器
+类（以及所有超类）中的所有非静态、非 transient 字段都是公有的（非 final 的）， 或者具有遵循 Java bean 对于 getter 和 setter 命名规则的公有 getter 和 setter 方法。
+请注意，当用户自定义的数据类型无法识别为 POJO 类型时，必须将其作为泛型类型处理并使用 Kryo 进行序列化。
+
+### 创建 TypeInformation 或者 TypeSerializer
+
+要为类型创建 TypeInformation 对象，需要使用特定于语言的方法：
+
+
+在 Scala 中，Flink 使用在编译时运行的宏捕获所有泛型类型信息。
+
+```scala
+// 注意：这个导入是为了访问 'createTypeInformation' 的宏函数
+import org.apache.flink.streaming.api.scala._
+
+val stringInfo: TypeInformation[String] = createTypeInformation[String]
+
+val tupleInfo: TypeInformation[(String, Double)] = createTypeInformation[(String, Double)]
+```
+仍然可以使用与 Java 相同的方法作为后备。
+
+通过调用 TypeInformation 对象的 typeInfo.createSerializer(config) 方法可以简单的创建 TypeSerializer 对象。
+
+config 参数的类型是 ExecutionConfig，这个参数中持有程序注册的自定义序列化器信息。 尽可能传入程序合适的 ExecutionConfig 。可以通过调用 DataStream 或者 DataSet 的 getExecutionConfig() 函数获得 ExecutionConfig 对象。如果是在一个函数的内部 （比如 MapFunction），可以使这个函数首先成为 RichFunction ，然后通过调用 getRuntimeContext().getExecutionConfig() 获得 ExecutionConfig 对象。
+
+## Scala API 中的类型信息
+
+Scala 拥有精细的运行时类型信息概念 type manifests 以及 class tags。类型和方法通常可以访问他们泛型 参数的类型 - 因此，Scala 程序不像 Java 程序那样需要面对类型擦除的问题。
+
+此外，Scala 允许通过 Scala 宏在 Scala 编译器中运行自定义代码 - 这意味着无论何时编译使用 Flink Scala API 编写的 Scala 程序，都会执行一些 Flink 代码。
+
+我们在编译期间使用宏来查看所有用户自定义函数的参数类型和返回类型 - 这是所有类型信息都完全可用的时间点。 在宏中，我们为函数的返回类型（或参数类型）创建了 TypeInformation，并使其成为操作的一部分。
+
+### No Implicit Value for Evidence Parameter 错误
+
+当 TypeInformation 创建失败的时候，程序会抛出错误信息 “could not find implicit value for evidence parameter of type TypeInformation”
+
+产生这样错误最常见的原因是没有导入生成 TypeInformation 的代码。需要导入完整的 flink.api.scala 包。
+
+`import org.apache.flink.api.scala._`
+
+另一个常见原因是泛型方法，可以按照以下部分所述进行修复。
+
+### 泛型方法
+
+考虑下面的代码：
+
+```scala
+def selectFirst[T](input: DataSet[(T, _)]) : DataSet[T] = {
+  input.map { v => v._1 }
+}
+
+val data : DataSet[(String, Long) = ...
+
+val result = selectFirst(data)
+```
+对于上面这样的泛型方法，函数的参数类型以及返回类型可能每一次调用都是不同的并且没有办法在方法定义的时候被感知到。 上面的代码将导致没有足够的隐式转换可用错误。
+
+在这种情况下，类型信息必须在调用时间点生成并将其传递给方法。Scala 为此提供了隐式转换。
+
+下面的代码告诉 Scala 将 T 的类型信息带入函数中。类型信息会在方法被调用的时间生成，而不是 方法定义的时候。
+
+```scala
+def selectFirst[T : TypeInformation](input: DataSet[(T, _)]) : DataSet[T] = {
+  input.map { v => v._1 }
+}
+```
+
+##Java API 中的类型信息
+
+Java 会擦除泛型类型信息。Flink 使用 Java 预留的少量位（主要是函数签名以及子类信息）通过反射尽可能多的重新构造类型信息。 对于依赖输入类型来确定函数返回类型的情况，此逻辑还包含一些简单类型推断：
+
+```java
+public class AppendOne<T> implements MapFunction<T, Tuple2<T, Long>> {
+
+    public Tuple2<T, Long> map(T value) {
+        return new Tuple2<T, Long>(value, 1L);
+    }
+}
+```
+
+在某些情况下，Flink 无法重建所有泛型类型信息。 在这种情况下，用户必须通过类型提示来解决问题。
+
+### Java API 中的类型提示
+
+在 Flink 无法重建被擦除的泛型类型信息的情况下，Java API 需要提供所谓的类型提示。 类型提示告诉系统 DateStream 或者 DateSet 产生的类型：
+
+```java
+DataSet<SomeType> result = dataSet
+    .map(new MyGenericNonInferrableFunction<Long, SomeType>())
+        .returns(SomeType.class);
+```
+
+在上面情况下 returns 表达通过 Class 类型指出产生的类型。通过下面方式支持类型提示：
+
+对于非参数化的类型（没有泛型）的 Class 类型
+以 returns(new TypeHint<Tuple2<Integer, SomeType>>(){}) 方式进行类型提示。 TypeHint 类可以捕获泛型的类型信息并且保存到执行期间（通过匿名子类）。
+
+### Java 8 lambdas 的类型提取
+
+Java 8 lambdas 的类型提取与非-lambdas 不同，因为 lambdas 与扩展函数接口的实现类没有关联。
+
+Flink 目前试图找出实现 lambda 的方法，并使用 Java 的泛型签名来确定参数类型和返回类型。 但是，并非所有编译器都为 lambda 生成这些签名（此文档写作时，只有 Eclipse JDT 编译器从4.5开始可靠支持）。
+
+### POJO 类型的序列化
+
+PojoTypeInfo 为 POJO 中的所有字段创建序列化器。Flink 标准类型如 int、long、String 等由 Flink 序列化器处理。 对于所有其他类型，我们回退到 Kryo。
+
+对于 Kryo 不能处理的类型，你可以要求 PojoTypeInfo 使用 Avro 对 POJO 进行序列化。 需要通过下面的代码开启。
+
+```java
+final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+env.getConfig().enableForceAvro();
+```
+
+请注意，Flink 会使用 Avro 序列化器自动序列化 Avro 生成的 POJO。
+
+通过下面设置可以让你的整个 POJO 类型被 Kryo 序列化器处理。
+
+```java
+final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+env.getConfig().enableForceKryo();
+```
+如果 Kryo 不能序列化你的 POJO，可以通过下面的代码添加自定义的序列化器
+
+```java
+env.getConfig().addDefaultKryoSerializer(Class<?> type, Class<? extends Serializer<?>> serializerClass)
+```
+
+这些方法有不同的变体可供选择。
+
+##禁止回退到 Kryo
+
+对于泛型信息，程序可能希望在一些情况下显示的避免使用 Kryo。最常见的场景是，用户想要确保所有的类型都可以通过 Flink 自身 或者用户自定义的序列化器高效的进行序列化操作。
+
+下面的设置将引起通过 Kryo 的数据类型抛出异常：
+
+`env.getConfig().disableGenericTypes();`
+
+## 使用工厂方法定义类型信息
+
+类型信息工厂允许将用户定义的类型信息插入 Flink 类型系统。 你可以通过实现 org.apache.flink.api.common.typeinfo.TypeInfoFactory 来返回自定义的类型信息工厂。 如果相应的类型已指定了 @org.apache.flink.api.common.typeinfo.TypeInfo 注解，则在类型提取阶段会调用 TypeInfo 注解指定的 类型信息工厂。
+
+类型信息工厂可以在 Java 和 Scala API 中使用。
+
+在类型的层次结构中，在向上遍历时将选择最近的工厂，但是内置工厂具有最高优先级。 工厂的优先级也高于 Flink 的内置类型，因此你应该知道自己在做什么。
+
+以下示例说明如何使用 Java 中的工厂注释为自定义类型 MyTuple 提供自定义类型信息。
+
+带注解的自定义类型：
+
+```java
+@TypeInfo(MyTupleTypeInfoFactory.class)
+public class MyTuple<T0, T1> {
+  public T0 myfield0;
+  public T1 myfield1;
+}
+```
+支持自定义类型信息的工厂：
+
+```java
+public class MyTupleTypeInfoFactory extends TypeInfoFactory<MyTuple> {
+
+  @Override
+  public TypeInformation<MyTuple> createTypeInfo(Type t, Map<String, TypeInformation<?>> genericParameters) {
+    return new MyTupleTypeInfo(genericParameters.get("T0"), genericParameters.get("T1"));
+  }
+}
+```
+
+方法 createTypeInfo(Type, Map<String, TypeInformation<?>>) 为工厂所对应的类型创建类型信息。 参数提供有关类型本身的额外信息以及类型的泛型类型参数。
+
+如果你的类型包含可能需要从 Flink 函数的输入类型派生的泛型参数， 请确保还实现了 org.apache.flink.api.common.typeinfo.TypeInformation#getGenericParameters， 以便将泛型参数与类型信息进行双向映射。
+
+
+## 为你的 Flink 程序注册自定义序列化器
+
+如果在 Flink 程序中使用了 Flink 类型序列化器无法进行序列化的用户自定义类型，Flink 会回退到通用的 Kryo 序列化器。 可以使用 Kryo 注册自己的序列化器或序列化系统，比如 Google Protobuf 或 Apache Thrift。 使用方法是在 Flink 程序中的 ExecutionConfig 注册类类型以及序列化器。
+
+```java
+final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+
+// 为类型注册序列化器类
+env.getConfig().registerTypeWithKryoSerializer(MyCustomType.class, MyCustomSerializer.class);
+
+// 为类型注册序列化器实例
+MySerializer mySerializer = new MySerializer();
+env.getConfig().registerTypeWithKryoSerializer(MyCustomType.class, mySerializer);
+需要确保你的自定义序列化器继承了 Kryo 的序列化器类。 对于 Google Protobuf 或 Apache Thrift，这一点已经为你做好了：
+
+final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+
+// 使用 Kryo 注册 Google Protobuf 序列化器
+env.getConfig().registerTypeWithKryoSerializer(MyCustomType.class, ProtobufSerializer.class);
+
+// 注册 Apache Thrift 序列化器为标准序列化器
+// TBaseSerializer 需要初始化为默认的 kryo 序列化器
+env.getConfig().addDefaultKryoSerializer(MyCustomType.class, TBaseSerializer.class);
+```
+
+为了使上面的例子正常工作，需要在 Maven 项目文件中（pom.xml）包含必要的依赖。 为 Apache Thrift 添加以下依赖：
+
+```xml
+<dependency>
+	<groupId>com.twitter</groupId>
+	<artifactId>chill-thrift</artifactId>
+	<version>0.5.2</version>
+</dependency>
+<!-- libthrift is required by chill-thrift -->
+<dependency>
+	<groupId>org.apache.thrift</groupId>
+	<artifactId>libthrift</artifactId>
+	<version>0.6.1</version>
+	<exclusions>
+		<exclusion>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+		</exclusion>
+		<exclusion>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+对于 Google Protobuf 需要添加以下 Maven 依赖：
+
+<dependency>
+	<groupId>com.twitter</groupId>
+	<artifactId>chill-protobuf</artifactId>
+	<version>0.5.2</version>
+</dependency>
+<!-- We need protobuf for chill-protobuf -->
+<dependency>
+	<groupId>com.google.protobuf</groupId>
+	<artifactId>protobuf-java</artifactId>
+	<version>2.5.0</version>
+</dependency>
+
+```
+
+请根据需要调整两个依赖库的版本。
+
+使用 Kryo JavaSerializer 的问题
+如果你为自定义类型注册 Kryo 的 JavaSerializer，即使你提交的 jar 中包含了自定义类型的类，也可能会遇到 ClassNotFoundException 异常。 这是由于 Kryo JavaSerializer 的一个已知问题，它可能使用了错误的类加载器。
+
+在这种情况下，你应该使用 org.apache.flink.api.java.typeutils.runtime.kryo.JavaSerializer 来解决这个问题。 这个类是在 Flink 中对 JavaSerializer 的重新实现，可以确保使用用户代码的类加载器。
+
+更多细节可以参考 [FLINK-6025](https://issues.apache.org/jira/browse/FLINK-6025)。
+
+# 参数优化
+
+在启动flink 之前，在核心的配置文件里面，需要指定两个参数。
+taskmanager.numberOfTaskSlots 和 parallelism.default。
+
+首先需要明白slot的概念。对于 taskManager，他其实是一个 JVM 程序。
+这个JVM 可以同时执行多个task，每个task 需要使用本机的硬件资源。
+slot 的属于 jvm 管理的 一些列资源卡槽。 每个slot 只能执行一个task。
+每个slot分配有固定的内存资源，但是不做cpu的隔离。 JVM管理一个 slot的pool，
+用来执行相应的task。taskmanager.numberOfTaskSlots = 10，则理论上可以同时执行10个子任务。
+
+那么对于1个5节点，numberOfTaskSlots= 6的集群来说，那么就有30个slot可以使用。
+对于具体的一个job来说，他会贪婪的使用所有的 slot吗？
+使用多少slot 是由parallelism.default 决定的。如果是 5， 那么对于一个job 他最多同时使用5个slot。
+这个配置对于多job平台的集群是很有必要的。
+
+那么给定一个stream api 编写的flink 程序，被分解的task是否和map 到slot 上执行的呢？
+flink 有几个经典的graph， stream-api对应的stream_graph-> job_graph->execution_graph->物理执行图。
+execution_graph 基本就决定了如何分布执行。
+我们知道一个 stream-api, 主要有 source, operate, sink 这几部分。那么我们可以从source开始看 并行的控制。
+
+source 有并行source和 非并行。我们主要看并行，想类似与kafka 这种生成消费者模式的数据源，能够 并行消费source是非常重要的。
+所以可以看到kafka，FlinkKafkaConsumerBase<T> extends RichParallelSourceFunction<T>，可以充分利用并行度，大大提高吞吐量。
+对应到具体的物理执行上，就是多个 source task 任务执行，他们属于一个kafka group同时消费 不同的partition。
+对于parallelSource，默认使用cpu 核心做并行度。我们可以通过api进行设置。
+
+接下来是 operate，每个operate都可以设置parallel，如果没有设置将会使用其他层次的设置，比如env，flink.conf中的配置，parallelism.default。
+比如 source. map1().map2().grouby(key).sink()
+这样一个程序，默认，source和 map1，map2有同样的parallel，上游的output 可以直接one-one forwarding.
+在flink 的 优化中，甚至可以把这些 one-one 的operate 合成一个，避免转发，线程切换，网络通信开销。
+对于groupby 这样的算子，则属于另外的一类。上游的output 需要 partion 到下游的不同的节点，而不能做位一个chain。
+
+由于operate可以设置独自的parallel，如果与上游不一致。上游的output必然需要某种partion策略来 rebalnce数据。kafka有很多策略来处理这个细节。
+对于partion放在专门的章节来说明。
+对于sink，则可以理解位一个特定的operate，目前看没什么特殊处理逻辑。
+
+
+#  坑
+
+## kafka offset问题
+
+flink消费kafka的数据，不是实时commit offset，是随checkpoint一起提交，stop的时候也会保存到savepoint里，这就涉及到一个问题，如果初始用的是a topic，这会stop了， a的offset不会提交，而是会写到savepoint里，等下次启动的时候再提交，如果下次启动的时候，换成了b topic，那此时提交的是a的offset，比如a消费到100了，而b原来消费到200了，那此时提交了个100的offset，**数据就重复消费了**
+
+所以有这种topic变更的情况，最好是清理掉savepoint再启动
+
+# checkpoint
+
+## Checkpoint 的配置
+
+在 Flink 应用程序中配置 Checkpoint，首先需要开启 Checkpoint，同时指定 Checkpoint 的时间间隔。
+
+```scala
+val env = StreamExecutionEnvironment.getExecutionEnvironment
+// enable Checkpoint and set 10min Checkpoint Interval
+env.enableCheckpointing(10 * 1000)
+```
+为了对 Checkpoint 进行更多的配置，你需要拿到 CheckpointConfig：
+
+```scala
+val chkpConf = env.getCheckpointConfig
+```
+
+Flink 默认提供 Extractly-Once 保证 State 的一致性。这可以通过 CheckpointConfig 进行设置，Flink 提供了 Extractly-Once，At-Least-Once 两种模式。
+
+```scala
+chkpConf.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE)
+
+```
+
+如果只是设置 State 的一致性保障机制，那么可以简单配置成：
+
+```scala
+env.enableCheckpointing(10 * 1000, CheckpointingMode.EXACTLY_ONCE)
+```
+
+由于每个 Flink 应用程序的 State 大小不同，StateBackend 也可能有所不同，所以，Checkpoint 需要根据实际情况配置。Flink 默认同一时间只允许执行一个 Checkpoint，以避免占用太多正常数据处理资源。如果在配置的 Checkpoint 时间间隔之内，一个 Checkpoint 正在生产，另一个 Checkpoint 也需要开始生产，那么，第二个 Checkpoint 将会等到第一个 Checkpoint 生产完成才会开始。
+
+那么，如果很多 Checkpoint 生产时间过长，比 Checkpoint 时间间隔还要长，会有什么影响呢？在这种情况下，Checkpoint 的配置是不理想的，原因有二：
+
+1. 这种现象意味着应用程序的正常数据处理过程和 Checkpoint 的生产是并发的，资源是被二者共享的。所以，它将会拖慢正常数据的处理速度，无法全力消费数据，甚至导致数据的处理速度慢于数据的输入速度。
+2. 因为需要等待前一个 Checkpoint 生产完成，会使下一个 Checkpoint 延迟生产，从而导致在失败恢复时需要更长的追赶时间。
+
+为了保证应用程序可以全力处理数据，你可以配置 Checkpoint 彼此之间的停顿时间。比如，你配置最小停顿时间是一分钟，那么在一个 Checkpoint 生产完成之后的头一分钟，不会有新的 Checkpoint 被拉起，这仅限于同时最多只有一个 Checkpoint 生产的情况。
+
+```scala
+chkpConf.setMinPauseBetweenCheckpoints(60 * 1000)
+```
+
+如果某个应用程序的 Checkpoint 生产需要比较长如果某个应用程序的 Checkpoint 生产需要比较长的时间，但由于不用消耗很多资源，那么这时候是可以配置 Checkpoint 更高的并发量的：
+
+```scala
+chkpConf.setMaxConcurrentCheckpoints(3)
+```
+
+值得注意的一点是：Savepoint 是可以和 Checkpoint 并发生产的。即使有多个 Checkpoint 正在生产的过程中，Savepoint 也会并发生产。
+
+为了避免有 Checkpoint 生产时间过长，导致资源一直被占用，你可以给 Checkpoint 设置一个超时时间，Flink 默认的 Checkpoint 超时时间是 10 分钟。
+
+```scala
+chkpConf.setCheckpointTimeout(5 * 1000)
+```
+
+众所周知，Checkpoint 失败之后，会触发 Flink 的失败恢复机制进行重启。如果你想禁用这个功能，让应用程序在 Checkpoint 失败后继续执行，可以用下面的方式配置（这个配置的 API 在 Flink 1.9 已经被标记成废弃了）。
+
+```scala
+chkpConf.setFailOnCheckpointingErrors(false)
+```
+
+另外，在 Flink 1.9 引入了 Checkpoint 失败次数容忍度的配置，默认是 0 次，即对 Checkpoint 的失败是零容忍的，你可以通过 API 进行配置。
+
+```scala
+chkpConf.setTolerableCheckpointFailureNumber(3)
+```
+
+### Checkpoint 的清除
+
+Checkpoint 的初衷是进行失败恢复，因此，当一个 Flink 应用程序停止时（比如，失败终止、人为取消等），它的 Checkpoint 就会被清除。但是，你可以通过开启外化 Checkpoint 功能，在应用程序停止后，保存 Checkpoint。
+
+```scala
+chkpConf.enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+
+```
+
+Flink 支持两种外化 Checkpoint：
+
+* DELETE_ON_CANCELLATION：当应用程序完全失败或者明确地取消时，保存 Checkpoint。
+* RETAIN_ON_CANCELLATION：当应用程序完全失败时，保存 Checkpoint。如果应用程序是明确地取消时，Checkpoint 被删除。
+
+切记：外化 Checkpoint 并不能代替 Savepoint。它们使用特定于 State Backend 的存储格式，但是没有伸缩性。因此，它们只能满足应用程序失败后的重启，缺乏 Savepoint 的灵活性。
+
+## Checkpoint 的配置原则
+
+上一节介绍了 Checkpoint 的配置方法，以及 Checkpoint 时间间隔与 Checkpoint 生产时间的关系对 Flink 应用程序的影响。Checkpoint 的配置需要随着 Flink 应用程序的不同而不同。这里简单介绍一下 Checkpoint 的配置原则：
+
+Checkpoint 时间间隔不易过大。一般来说，Checkpoint 时间间隔越长，需要生产的 State 就越大。如此一来，当失败恢复时，需要更长的追赶时间。
+Checkpoint 时间间隔不易过小。如果 Checkpoint 时间间隔太小，那么 Flink 应用程序就会频繁 Checkpoint，导致部分资源被占有，无法专注地进行数据处理。
+Checkpoint 时间间隔大于 Checkpoint 的生产时间。当 Checkpoint 时间间隔比 Checkpoint 生产时间长时，在上次 Checkpoint 完成时，不会立刻进行下一次 Checkpoint，而是会等待一段时间，之后再进行新的 Checkpoint。否则，每次 Checkpoint 完成时，就会立即开始下一次 Checkpoint，系统会有很多资源被 Checkpoint 占用，而真正任务计算的资源就会变少。
+开启本地恢复。如果 Flink State 很大，在进行恢复时，需要从远程存储上读取 State 进行恢复，如果 State 文件过大，此时可能导致任务恢复很慢，大量的时间浪费在网络传输方面。此时可以设置 Flink 应用程序本地 State 恢复，应用程序 State 本地恢复默认没有开启，可以设置参数 state.backend.local-recovery 值为 true 进行激活。
+设置 Checkpoint 保存数。Checkpoint 保存数默认是 1，也就是只保存最新的 Checkpoint 的 State 文件，当进行 State 恢复时，如果最新的 Checkpoint 文件不可用时 (比如文件损坏或者其他原因)，那么 State 恢复就会失败，如果设置 Checkpoint 保存数 3，即使最新的 Checkpoint 恢复失败，那么 Flink 也会回滚到上一次 Checkpoint 的状态文件进行恢复。考虑到这种情况，可以通过 state.checkpoints.num-retained 设置 Checkpoint 保存数。
+
+## 总结
+
+Checkpoint 是 Flink 的失败恢复机制，它的配置对于 Flink 应用程序的性能和稳定性有着至关重要的影响。Checkpoint 需要根据 Flink 应用程序的不同而进行不同的配置，根据相关配置原则，以求达到理想的配置，使 Flink 应用程序性能和稳定性最优化。
+
+
+# 使用不同的配置文件
+
+如同一个服务器上，不同的应用，要使用不同的logback配置文件，但是flink不像spark那样，支持加载指定的配置文件，只会加载conf里的配置，此时，可以通过在启动脚本里设置环境变量
+```shell
+export FLINK_CONF_DIR=/home/hadoop/etl/flink-1.12.4-article/conf
+```
+把不同应用的配置文件放到不同文件夹，通过指定不同的FLINK_CONF_DIR来实现不同应用使用不同配置文件。
+这样也就不用在服务器上配置不同的flink客户端了，只要设置不同的配置文件文件夹就可以了

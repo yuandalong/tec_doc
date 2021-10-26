@@ -72,33 +72,28 @@
 ```shell
 ./kafka-consumer-groups --bootstrap-server 127.0.0.1:9092 --group test --describe
 ```
-## 生产者
 
-```shell
-./kafka-console-producer --broker-list localhost:9092 --topic test
-```
-
-## 查指定groupId的offset
+### 查指定groupId的offset
 
 ```shell
 ./kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group kafka_test
 ```
 
-## 查topic offset最小值
+### 查topic offset最小值
 
 ```shell
 ./kafka-run-class kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic test --time -2
 
 ```
-## 查topic offset最大值
+### 查topic offset最大值
 
 ```shell
 ./kafka-run-class kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic test --time -1
 ```
 
-## 修改offset
+### 修改offset
 
-### 0.9版本之后的
+#### 0.9版本之后的
 0.9版本之后的offset信息保存在topic中
 > 1. 一定不要忘记加 --execute 选项
 > 2. 在修改consumer offset时，需要将该consumer group.id下所有的consumer停止运行才可以进行重置offset的操作。
@@ -135,13 +130,22 @@
     
 [参考文档](https://juejin.im/post/5c0cdc25e51d451de22a5547)
 
-### 0.9之前的版本
+#### 0.9之前的版本
 0.9之前的版本offset信息保存在zookeeper当中
 
 ```shell
 ./kafka-consumer-groups.sh --zookeeper z1:2181,z2:2181,z3:2181 --group test-consumer-group --topic test --execute --reset-offsets --to-offset 10000
 # --zookeeper 和 --bootstrap-server 只能选一种方式
 ```
+
+
+
+## 生产者
+
+```shell
+./kafka-console-producer --broker-list localhost:9092 --topic test
+```
+
 
 ---
 

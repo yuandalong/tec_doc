@@ -24,3 +24,12 @@ spark-submit arguments
 ```
 
 [参考文档](https://www.cnblogs.com/yy3b2007com/p/10274053.html)
+
+# 启动manager
+
+
+```shell
+cd /home/cloudera-manager/cm-5.15.0/etc/init.d
+sh cloudera-scm-server start
+sh cloudera-scm-agent start
+```

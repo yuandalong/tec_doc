@@ -659,3 +659,8 @@ Spring Cloud 是为了解决微服务架构中服务治理而提供的一系列�
 用一组不太合理的包含关系来表达它们之间的关系。
 
 Spring ioc/aop > Spring > Spring Boot > Spring Cloud
+
+# springboot logback默认配置
+```xml
+<include resource="org/springframework/boot/logging/logback/base.xml"/>
+```

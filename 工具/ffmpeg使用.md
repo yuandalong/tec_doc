@@ -76,7 +76,7 @@ ffmpeg -i input.mp4 -c:v libx264 output.mp4
 * -vf:是一个命令行，表示过滤图形的描述, 选择过滤器select会选择帧进行输出：包括过滤器常量 
 * pict_type和对应的类型:PICT_TYPE_I 表示是I帧，即关键帧。 
 * -vsync 2:阻止每个关键帧产生多余的拷贝 
-* -f image2 name_%02d.jpeg:将视频帧写入到图片中，样式的格式一般是: * “%d” 或者 “%0Nd” 
+* -f image2 core-%02d.jpeg:将视频帧写入到图片中，样式的格式一般是: * “%d” 或者 “%0Nd” 
 * -s:分辨率，1920*1080
 
 这样保存下来的关键帧的命名顺序是从1开始的，数字表示第几个关键帧。需要保存关键帧在原始视频中的帧的位置，参考[Extracting the index of key frames from a video using ffmpeg](https://superuser.com/questions/885452/extracting-the-index-of-key-frames-from-a-video-using-ffmpeg),
@@ -99,6 +99,9 @@ w:水印宽
 h:水印高
 show:0不显示绿框，1显示绿框
 
+# 下载m3u8
+ 
+ `ffmpeg -i https://host/really.m3u8 -c copy your.mp4`
  
 # 参考文档
 [常用命令](https://www.cnblogs.com/xuan52rock/p/7929509.html)

@@ -10,6 +10,14 @@
 # 使用数据库
 `use dbName;`
 
+# 创建数据库
+```
+#use dbname时，dbname不存在，则创建数据库，否则切换到指定数据库
+use dbName
+#此时运行show dbs看不到新创建的库，需要插入一些数据之后才能看到
+db.dbName.insert({"name":"123"})
+```
+
 # 显示表
 `show tables;`
 或者
@@ -34,6 +42,77 @@ db.createCollection("mycol", { capped : true, autoIndexId : true, size : 6142800
 
 不是必须的，mongo插入数据时当表不存在会自动创建
 
+# 字段操作
+
+## 添加字段并设置默认值
+语法：`db.doc名称.update({}, {$set: {新字段名称: 默认值}}, false, true)`
+
+`db.media_source.update({}, {$set: {self_media: false}}, false, true)`
+
+## 修改已有数据的字段类型
+
+字段类型判断
+
+```
+db.tb_name.find({"status":{$type:"double"}).count() //所有的status字段类型为Double类型的
+
+db.tb_name.find({"status":{$type:1}).count() //所有status字段类型为Double类型的
+```
+
+mongo字段类型对应表
+![](media/16152729285596.png)
+
+数据类型批量转换
+（double转为int32）：
+`db.tb_name.find({"status":{$type:1}}).forEach(function(x){x.status=NumberInt(x.status);db.tb_name.save(x)})
+` 
+
+（string转为array）：
+`db.log.find({"record":{$type:2}}).forEach(function(x){x.record=Array(x.record);db.log.save(x)})`
+
+## 删除已有字段
+
+查询语句
+
+```mongo
+db.getCollection("A表").update({},{$unset:{"a":1}},{multi:true})
+```
+
+作用：删除A表中a字段
+
+查询语句分析
+条件： 可以不写
+更新：$unset:{"a":1}   删除A表中a字段
+是否改变多条记录：multi: true  (不加这个，则默认改变 符合查询条件的第一条记录)
+
+# 索引操作
+
+## 新增索引
+给title字段创建索引
+`db.col.createIndex({"title":1})`
+1 为指定按升序创建索引，如果你想按降序来创建索引指定为 -1 即可
+
+用title和description创建复合索引
+`db.col.createIndex({"title":1,"description":-1})`
+
+在后台创建索引，防止索引创建过程中**阻塞**其他数据库操作
+`db.col.createIndex({open: 1, close: 1}, {background: true})`
+background的默认值是false
+
+## 查看索引
+查看集合的所有索引
+`db.col.getIndexes()`
+
+查看集合索引文件的大小
+`db.col.totalIndexSize()`
+
+## 删除索引
+删除集合所有索引
+`db.col.dropIndexes()`
+
+删除集合指定索引
+`db.col.dropIndex("索引名称")`
+
 # 插入数据
 `db.tableName.save({"a":"b"})`
 
@@ -49,6 +128,16 @@ db.createCollection("mycol", { capped : true, autoIndexId : true, size : 6142800
 ```shell
 #$gt表示>，lt表示<，gte表示>=，lte表示<=，ne表示!=
 db.tableName.find({"columnName" : {$gt: 22}}); 
+```
+
+##查字段长度大于小于
+
+```shell
+//查询商品名称长度大于25个字符的商品
+db.item.find({ "item_name" : { "$exists" :  true ,  "$regex" : /^.{25,}$/}}).limit(5)
+ 
+//查询商品名称长度小于5个字符的商品
+db.item.find({ "item_name" : { "$regex" : /^.{0,5}$/}}).limit(5)
 ```
 
 ## 字段去重
@@ -144,6 +233,7 @@ db.rptDailyPrefStat.find().sort({'bussDate':-1}).limit(1)
 
 # 更新数据
 
+
 `db.collection.update( criteria, objNew, upsert, multi );`
 * criteria : update的查询条件，类似sql update查询内where后面的
 * objNew   : update的对象和一些更新的操作符（如$,$inc...）等，也可以理解为sql update查询内set后面的
@@ -166,6 +256,11 @@ db.test0.update( { "count" : { $gt : 15 } } , { $inc : { "count" : 1} },false,tr
 #只更新第一条
 db.test0.update( { "count" : { $gt : 10 } } , { $inc : { "count" : 1} },false,false );
 ```
+
+## 删除字段
+
+db.test0.update( { "count" : { $gt : 1 } } , { $unset : { "test2" : ""} } ); 
+
 
 # 删除数据
         

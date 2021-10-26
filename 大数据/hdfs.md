@@ -98,20 +98,35 @@ hadoop fs -get hdfs://host:port/user/hadoop/file localfile
 接受一个源目录和一个目标文件作为输入，并且将源目录中所有的文件连接成本地目标文件。addnl是可选的，用于指定在每个文件结尾添加一个换行符。
 
 ## ls
+
 使用方法：hadoop fs -ls <args>
 
 如果是文件，则按照如下格式返回文件信息：
 文件名 <副本数> 文件大小 修改日期 修改时间 权限 用户ID 组ID 
 如果是目录，则返回它直接子文件的一个列表，就像在Unix中一样。目录返回列表的信息如下：
-目录名 <dir> 修改日期 修改时间 权限 用户ID 组ID 
+目录名 `<dir>` 修改日期 修改时间 权限 用户ID 组ID 
 示例：
 
-```shellhadoop fs -ls /user/hadoop/file1 /user/hadoop/file2 hdfs://host:port/user/hadoop/dir1 /nonexistentfile 
+```shell
+hadoop fs -ls /user/hadoop/file1 /user/hadoop/file2 hdfs://host:port/user/hadoop/dir1 /nonexistentfile 
+```
+
+参数：
 
 ```
-返回值：
-成功返回0，失败返回-1。 
+-C  Display the paths of files and directories only.
+-d  Directories are listed as plain files.
+-h  Formats the sizes of files in a human-readable fashion
+    rather than a number of bytes.
+-q  Print ? instead of non-printable characters.
+-R  Recursively list the contents of directories.
+-t  Sort files by modification time (most recent first).
+-S  Sort files by size.
+-r  Reverse the order of the sort.
+-u  Use time of last access instead of modification for
+    display and sorting.
 
+```
 ## lsr
 使用方法：hadoop fs -lsr <args> 
 ls命令的递归版本。类似于Unix中的ls -R。
@@ -174,7 +189,8 @@ hadoop fs -put - hdfs://host:port/hadoop/hadoopfile
 ## rm
 使用方法：hadoop fs -rm URI [URI …]
 
-删除指定的文件。只删除非空目录和文件。请参考rmr命令了解递归删除。
+删除指定的文件。只删除非空目录和文件。
+请参考rm -r命令了解递归删除。
 示例：
 
 `hadoop fs -rm hdfs://host:port/file /user/hadoop/emptydir`
@@ -182,8 +198,14 @@ hadoop fs -put - hdfs://host:port/hadoop/hadoopfile
 
 成功返回0，失败返回-1。
 
-## rmr
-使用方法：hadoop fs -rmr URI [URI …]
+### 直接删除，不放入回收站
+`hdfs dfs -rm -r -skipTrash /path`
+
+### 清空回收站
+hdfs dfs -expunge (执行完之后会打一个checkpoint，并不会立即执行，稍后会执行清空回收站操作)
+
+## rm -r
+使用方法：hadoop fs -rm -r URI [URI …]
 
 delete的递归版本。
 示例：

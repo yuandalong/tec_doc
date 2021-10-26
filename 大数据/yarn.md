@@ -497,3 +497,17 @@ http://localhost:8088/ws/v1/cluster/scheduler
 * spark 在submit脚本里加--queue 队列名
 * flink 在yarn-session.sh或者flink run脚本里使用-qu或者--queue 队列名
 * hadoop -D mapreduce.job.queuename=root.etl.distcp
+
+# 资源计算器
+ yarn.scheduler.capacity.resource-calculator：该配置指定调度器使用的资源计算器，资源计算器用于在调度器中比较资源。默认值是 org.apache.hadoop.yarn.util.resource.DefaultResourseCalculator，只使用内存进行比较，而DominantResourceCalculator 用 Dominant-resource比较多维度资源，如内存，CPU等等。
+
+配置在capacity-scheduler.xml里
+```xml
+ <property>
+    <name>yarn.scheduler.capacity.resource-calculator</name>
+    <value>org.apache.hadoop.yarn.util.resource.DominantResourceCalculator</value>
+  </property>
+
+```
+
+resource-calculator是yarn的全局设置，可以通过结合resource-calculator和队列资源的占比来实现不同队列的资源配置

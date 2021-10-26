@@ -47,8 +47,10 @@ POST请求中，通过HttpEntity传递的参数，必须要在请求头中声明
 
 # @Repository
 用于标注数据访问组件，即DAO组件 
+
 # @Component
 泛指组件，当组件不好归类的时候，我们可以使用这个注解进行标注。
+
 # @EnableDiscoveryClient 
 让服务使用eureka服务器
 # @EnableFeignClients 
@@ -76,15 +78,27 @@ Spring bean扫描路径
         useDefaultFilters = false)
 ```
 
-# @PreDestroy
+# init和destory
+
+## @PostConstruct
+启服务时执行
+## @PreDestroy
 停服务时执行的方法
+
+## 使用Bean注解的initMethod和destroyMethod属性
+`@Bean(name = "color",initMethod = "init1",destroyMethod = "destroy1")`
+同时定义了PostConstruct，PreDestroy和initMethod，destroyMethod的话，这两个属性指定的方法会在PostConstruct和PreDestroy注解的方法后面执行
 
 # @Bean
 定义bean
 可通过name属性定义bean的名称，@Autowired配合@Qualifier()，在Qualifier的value里设置bean的name来指定加载的bean
 
+## @Qualifier
+指定要加载哪个bean
+
 ## @Primary
-@Primary注解的意思是在拥有多个同类型的Bean时优先使用该Bean，到时候方便我们使用@Autowired注解自动注入。
+@Primary注解的意思是在拥有多个同类型的Bean时优先使用该Bean，到时候方便我们使用
+@Autowired注解自动注入。
 
 # @Configuration
 ## @EnableAutoConfiguration

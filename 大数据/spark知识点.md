@@ -1464,6 +1464,8 @@ uuid（dsfsfd-2342vs--sdf--sdfsd）。not found。file lost。
 `--conf spark.core.connection.ack.wait.timeout=300 `
 默认值是60
 
+## yarn里–executor-cores设置不起作用
+修改yarn的resource-calculator，yarn默认使用DefaultResourseCalculator，只分配内存，忽略vcore的设置，改为DominantResourceCalculator可以对内存和vcore同时生效
 
 # 常用隐式转换
 
