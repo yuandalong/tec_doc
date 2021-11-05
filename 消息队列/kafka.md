@@ -58,7 +58,7 @@
 ## 消费者
 
 ```shell
-./kafka-console-consumer --bootstrap-server localhost:9092 --topic test --from-beginning
+./kafka-console-consumer.sh --bootstrap-server 10.50.168.216:9092,10.50.168.148:9092,10.50.168.242:9092 --topic pbdap-origin-crawler-test --from-beginning
 ```
 
 ### 查看消费者列表
@@ -70,7 +70,7 @@
 ### 查指定group的消费者详情
 
 ```shell
-./kafka-consumer-groups --bootstrap-server 127.0.0.1:9092 --group test --describe
+./kafka-consumer-groups.sh --bootstrap-server 10.50.168.216:9092,10.50.168.148:9092,10.50.168.242:9092 --group test --describe
 ```
 
 ### 查指定groupId的offset
@@ -99,18 +99,18 @@
 > 2. 在修改consumer offset时，需要将该consumer group.id下所有的consumer停止运行才可以进行重置offset的操作。
 > 3. 如果不想停止所有的consumer（更多的情况下是不能），并且还想重置offset，那么可以通过KafkaConsumer.seek()来实现offset重置。
 
-1. 设置绝对offset，to-offset值需要在offset的最小值和最大值之间，所以要先查offset的最大和最小值
+1. 设置**绝对**offset，to-offset值需要在offset的最小值和最大值之间，所以要先查offset的最大和最小值
 
     ```shell
-    ./kafka-consumer-groups --bootstrap-server localhost:9092 --group kafka_test --topic test --reset-offsets --to-offset 10000 --execute
+    ./kafka-consumer-groups.sh --bootstrap-server 10.50.168.216:9092,10.50.168.148:9092,10.50.168.242:9092 --group idata-content-etl-article-dev-20210818 --topic middleground-origin-crawler-test --reset-offsets --to-offset -10 --execute
     ```
     
-1. 设置相对offset
+1. 设置**相对**offset
     * --shift-by  可正可负,正则向后移动,负数则向前移动.
     * --topic test:0,1,2表示test的0 1 2 partition
     
     ```shell
-    ./kafka-consumer-groups --bootstrap-server localhost:9092 --reset-offsets  --group kafka_test --topic test:0,1,2 --shift-by -666 --execute
+    ./kafka-consumer-groups.sh --bootstrap-server 10.50.168.216:9092,10.50.168.148:9092,10.50.168.242:9092 --reset-offsets  --group idata-content-etl-article-dev-20210818 --topic middleground-origin-crawler-test --shift-by 666 --execute
     ```
     
 1. 设置到指定时间点
